@@ -32,4 +32,6 @@
          text body instead of a real file attachment — broke email / Drive
          / any chat target that wanted the .log file itself. -->
     <files-path name="logs" path="logs/" />
+    <!-- Clawdy: files the agent produced in shared storage (~/storage/shared/Clawdy) opened with ACTION_VIEW. -->
+    <external-path name="external" path="." />
 </paths>

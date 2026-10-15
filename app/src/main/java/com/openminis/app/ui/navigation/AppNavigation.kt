@@ -248,7 +248,7 @@ fun AppNavigation(
     // ahead of the deep-link effects, and published for the non-composable entry points
     // (MainActivity's warm deep links). Written during composition on purpose so the effects
     // below already see it. Wide windows keep the upstream list/detail behaviour.
-    val nmHomeActive = !shouldUseTwoPane()
+    val nmHomeActive = true // Clawdy: the Clawdy shell is the home on every window size
     io.github.nanomuse.ui.home.HomeShell.active = nmHomeActive
 
     // App-icon quick action (New chat / Voice / Camera): the draft's id, decided once per
@@ -591,9 +591,17 @@ fun AppNavigation(
         // them keeps working unchanged. On a phone the scaffold resolves to a
         // single pane, so those pushes look and behave exactly as before.
         composable(Routes.SESSION_LIST) {
-            // nanoMuse: compact windows open on the home shell (main chat +
-            // bottom tabs); the upstream split keeps wide windows.
-            if (!shouldUseTwoPane()) {
+            // Clawdy: the new Compose shell (home + chat + drawer) is the start destination.
+            if (true) {
+                com.openminis.app.ui.clawdy.ClawdyShell(
+                    navController = navController,
+                    chatRepository = chatRepository,
+                    providerRepository = providerRepository,
+                    memoryRepository = memoryRepository,
+                    skillRepository = skillRepository,
+                    mcpRepository = mcpRepository,
+                )
+            } else if (!shouldUseTwoPane()) {
                 io.github.nanomuse.ui.home.NanoMuseHome(
                     navController = navController,
                     chatRepository = chatRepository,
@@ -611,6 +619,48 @@ fun AppNavigation(
                 memoryRepository = memoryRepository,
                 skillRepository = skillRepository,
                 mcpRepository = mcpRepository,
+            )
+        }
+
+        // ── Clawdy screens ──
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.TOOLS) {
+            com.openminis.app.ui.clawdy.ToolsScreen(onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.PROVIDER_ADD) {
+            com.openminis.app.ui.clawdy.ProviderAddScreen(
+                providerRepository = providerRepository,
+                onBack = { navController.safePopBackStack() },
+                onSaved = { navController.safePopBackStack() },
+            )
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.WORKSPACE) {
+            com.openminis.app.ui.clawdy.WorkspaceScreen(onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.ONBOARDING) {
+            com.openminis.app.ui.clawdy.OnboardingScreen(
+                onAddProvider = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.PROVIDER_ADD) },
+                onDone = { navController.safePopBackStack() },
+            )
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.SETTINGS) {
+            com.openminis.app.ui.clawdy.SettingsScreen(
+                onBack = { navController.safePopBackStack() },
+                nav = com.openminis.app.ui.clawdy.SettingsNav(
+                    persona = { navController.safeNavigate(Routes.SOUL) },
+                    providers = { navController.safeNavigate(Routes.PROVIDER_LIST) },
+                    addProvider = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.PROVIDER_ADD) },
+                    defaultModel = { navController.safeNavigate(Routes.MODEL_GROUPS) },
+                    tools = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.TOOLS) },
+                    logs = { navController.safeNavigate(Routes.LOGS) },
+                    legacy = { navController.safeNavigate(Routes.SETTINGS) },
+                    licenses = { navController.safeNavigate("clawdy/licenses") },
+                ),
+            )
+        }
+        composable("clawdy/licenses") {
+            com.openminis.app.ui.clawdy.LicensesScreen(
+                onBack = { navController.safePopBackStack() },
+                onUpstreamAbout = { navController.safeNavigate(Routes.ABOUT) },
             )
         }
 

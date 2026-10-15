@@ -486,11 +486,11 @@ class HandsCapsule(private val context: Context) {
     companion object {
         private const val TAG = "HandsCapsule"
         /** The stage's three hues (HandsStage, the desktop stage's --accent / --violet / --cyan). */
-        private const val ACCENT = 0xFF0A66E4.toInt()
-        private const val VIOLET = 0xFF7C5CFF.toInt()
-        private const val CYAN = 0xFF06B6D4.toInt()
+        private const val ACCENT = 0xFFE07F5F.toInt() // Clawdy coral palette
+        private const val VIOLET = 0xFFC9694B.toInt()
+        private const val CYAN = 0xFFF0A285.toInt()
         /** The pill's ink and its hairline edge, as on the desktop: rgba(17,18,24,.82) and white at 10 %. */
-        private const val INK = 0xD1111218.toInt()
+        private const val INK = 0xE02B211C.toInt() // Clawdy warm ink
         private const val EDGE = 0x1AFFFFFF
         /** Stop: a low-saturation red, not an alarm. */
         private const val STOP_RED = 0xFF9B3B3B.toInt()
