@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.isUnspecified
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openminis.app.R
@@ -69,17 +71,35 @@ import com.openminis.app.ui.theme.Clawdy
 import com.openminis.app.ui.theme.ClawdyFonts
 import com.openminis.app.ui.theme.ClawdyMotion
 import com.openminis.app.ui.theme.ClawdyTokens
+import com.openminis.app.ui.theme.LocalClawdyLook
 
-/** The serif face (Source Serif 4 + Noto Serif SC). */
+/** The UI face: serif (Source Serif 4 + Noto Serif SC) by default, or the 外观 → 字体 choice. */
 @Composable
 fun serifFamily(): FontFamily {
     val ctx = LocalContext.current
-    return remember { ClawdyFonts.serif(ctx) }
+    val font = LocalClawdyLook.current.font
+    return remember(font) {
+        when (font) {
+            1 -> FontFamily.SansSerif
+            2 -> FontFamily.Default
+            else -> ClawdyFonts.serif(ctx)
+        }
+    }
 }
 
+/** Text style in the chosen face, scaled by 外观 → 字号; [line] also follows 对话密度. */
 @Composable
-fun serif(size: TextUnit, weight: FontWeight = FontWeight.Normal, line: TextUnit = TextUnit.Unspecified): TextStyle =
-    TextStyle(fontFamily = serifFamily(), fontSize = size, fontWeight = weight, lineHeight = line)
+fun serif(size: TextUnit, weight: FontWeight = FontWeight.Normal, line: TextUnit = TextUnit.Unspecified): TextStyle {
+    val look = LocalClawdyLook.current
+    return TextStyle(
+        fontFamily = serifFamily(), fontSize = size * look.scale, fontWeight = weight,
+        lineHeight = if (line.isUnspecified) line else line * (look.scale * look.lineMul),
+    )
+}
+
+/** True when 外观 → 显示说明文字 is on. */
+@Composable
+fun showHints(): Boolean = LocalClawdyLook.current.hints
 
 val Mono: TextStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 18.sp)
 
@@ -316,44 +336,59 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** A settings-style row: icon tile, title + subtitle, trailing content (chevron by default). */
+/**
+ * A settings-style row: icon tile, title + [subtitle] (data — always shown), [hint] (explanation —
+ * shown only with 外观 → 显示说明文字), trailing content (chevron by default). The text column always
+ * keeps at least ~45% of the row, and wide trailing content should go in [below] instead.
+ */
 @Composable
 fun ClawdyRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    hint: String? = null,
     icon: ImageVector? = null,
     iconTint: Color = Clawdy.colors.accent,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     showChevron: Boolean = onClick != null && trailing == null,
+    below: (@Composable () -> Unit)? = null,
 ) {
     val c = Clawdy.colors
-    Row(
+    val hints = showHints()
+    Column(
         modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) {
-            Box(
-                Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(iconTint.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp)) }
-            Spacer(Modifier.width(12.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, color = c.text, style = serif(16.sp))
-            if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, color = c.text2, style = serif(13.sp, line = 18.sp))
+        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Box(
+                    Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(iconTint.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp)) }
+                Spacer(Modifier.width(12.dp))
             }
+            Column(Modifier.weight(1f)) {
+                Text(title, color = c.text, style = serif(16.sp))
+                if (!subtitle.isNullOrBlank()) {
+                    Text(subtitle, color = c.text2, style = serif(13.sp, line = 18.sp))
+                }
+                if (hints && !hint.isNullOrBlank()) {
+                    Text(hint, color = c.text2, style = serif(12.sp, line = 17.sp))
+                }
+            }
+            if (trailing != null) {
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.widthIn(max = 180.dp)) { trailing() }
+            }
+            if (showChevron) Icon(ClawdyIcons.ChevronRight, null, tint = c.text2, modifier = Modifier.size(18.dp))
         }
-        if (trailing != null) {
-            Spacer(Modifier.width(8.dp)); trailing()
+        if (below != null) {
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.fillMaxWidth().padding(start = if (icon != null) 48.dp else 0.dp)) { below() }
         }
-        if (showChevron) Icon(ClawdyIcons.ChevronRight, null, tint = c.text2, modifier = Modifier.size(18.dp))
     }
 }
 

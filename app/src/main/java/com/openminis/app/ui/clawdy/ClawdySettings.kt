@@ -63,27 +63,53 @@ import kotlinx.coroutines.withContext
 
 // ───────────────────────── shared bits ─────────────────────────
 
-/** Small-rounded-rect segmented control (no pills), the same shape as the theme picker. */
+/**
+ * Small-rounded-rect segmented control (no pills). 0.3.0: it fills the width it is given and every
+ * option gets an equal share, so it belongs on its own line ([SegmentedRow]) rather than squeezed
+ * next to a title — the 0.2.0 "离开后多久上锁" row rendered its title one character per line.
+ */
 @Composable
 fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = Clawdy.colors
-    Row(modifier.clip(RoundedCornerShape(10.dp)).background(c.bg).padding(2.dp)) {
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.bg).border(1.dp, c.border, RoundedCornerShape(10.dp)).padding(2.dp)) {
         options.forEachIndexed { i, l ->
-            Text(l, color = if (selected == i) Color.White else c.text2, style = serif(12.sp, FontWeight.Medium),
-                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected == i) c.accent else Color.Transparent)
-                    .clickable { onSelect(i) }.padding(horizontal = 9.dp, vertical = 6.dp))
+            Box(
+                Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if (selected == i) c.accent else Color.Transparent)
+                    .clickable { onSelect(i) }.padding(horizontal = 4.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(l, color = if (selected == i) Color.White else c.text2, style = serif(13.sp, FontWeight.Medium),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
         }
     }
 }
 
+/** Title (and optional data subtitle / hint) on top, the segmented control on its own full-width line below. */
+@Composable
+fun SegmentedRow(
+    title: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null, subtitle: String? = null, hint: String? = null,
+) {
+    ClawdyRow(title, subtitle = subtitle, hint = hint, icon = icon, below = { Segmented(options, selected, onSelect) })
+}
+
+/** Explanatory footnote: shown only with 外观 → 显示说明文字. */
 @Composable
 fun Hint(text: String, modifier: Modifier = Modifier) {
+    if (!showHints()) return
     Text(text, color = Clawdy.colors.text2, style = serif(12.sp, line = 18.sp), modifier = modifier.padding(horizontal = 20.dp, vertical = 6.dp))
+}
+
+/** A message the user needs whatever the setting (empty states, results, warnings). */
+@Composable
+fun Note(text: String, modifier: Modifier = Modifier, color: Color = Clawdy.colors.text2) {
+    Text(text, color = color, style = serif(13.sp, line = 19.sp), modifier = modifier.padding(horizontal = 20.dp, vertical = 6.dp))
 }
 
 @Composable
 fun SwitchRow(title: String, subtitle: String?, checked: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
-    ClawdyRow(title, subtitle = subtitle, icon = icon, trailing = { ClawdySwitch(checked, { onChange(it) }, enabled = enabled) })
+    ClawdyRow(title, hint = subtitle, icon = icon, trailing = { ClawdySwitch(checked, { onChange(it) }, enabled = enabled) })
 }
 
 @Composable
@@ -121,31 +147,38 @@ data class SettingsNav(
     val models: () -> Unit,
     val security: () -> Unit,
     val tools: () -> Unit,
-    val hands: () -> Unit,
-    val logs: () -> Unit,
-    val chatPrefs: () -> Unit,
-    val memory: () -> Unit,
     val skills: () -> Unit,
+    val connectors: () -> Unit,
     val scheduled: () -> Unit,
-    val env: () -> Unit,
-    val network: () -> Unit,
+    val appearance: () -> Unit,
     val background: () -> Unit,
     val backup: () -> Unit,
+    val advanced: () -> Unit,
     val licenses: () -> Unit,
 )
 
+/**
+ * 0.3.0 top level, kept simple: 人设 (avatar row: SOUL.md, 对话方式, MEMORY.md) · 模型 · 安全 ·
+ * 能力 (技能, 连接器, 工具连接, 定时任务) · 外观 · 系统 (通知与后台, 备份与恢复, 高级设置) · 关于.
+ * Everything a beginner would not need (环境变量, 运行日志, 网络代理, 上下文细节, 分组故障切换,
+ * Hands 屏幕模型, 调试) lives under 高级设置.
+ */
 @Composable
 fun SettingsScreen(onBack: () -> Unit, nav: SettingsNav, providerRepository: ProviderRepository) {
     val c = Clawdy.colors
     val ctx = LocalContext.current
-    var theme by remember { mutableIntStateOf(getAppearancePrefs(ctx).getInt(KEY_THEME_MODE, 0)) }
     val config by providerRepository.config.collectAsState()
     val mode = remember { com.openminis.app.clawdy.ClawdySecurity.mode(ctx) }
+    val soulName = remember { com.openminis.app.agent.SoulStore.load(ctx)?.metadata?.name?.ifBlank { null } ?: "Clawdy" }
+    val mcpCount = remember { runCatching { (ctx.applicationContext as com.openminis.app.MinisApp).mcpRepository?.servers?.value?.count { it.enabled } }.getOrNull() ?: 0 }
     ClawdyPage("设置", onBack) {
         Row(Modifier.fillMaxWidth().clickable(onClick = nav.persona).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             ClawdyAvatar(AvatarMood.IDLE, 56.dp, breathe = false)
             Spacer(Modifier.width(14.dp))
-            Text("Clawdy", color = c.text, style = serif(18.sp, FontWeight.SemiBold), modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text(soulName, color = c.text, style = serif(18.sp, FontWeight.SemiBold))
+                Text("人设 · 对话方式 · 记忆", color = c.text2, style = serif(13.sp))
+            }
             Icon(ClawdyIcons.ChevronRight, null, tint = c.text2, modifier = Modifier.size(18.dp))
         }
         SectionLabel("模型")
@@ -159,49 +192,37 @@ fun SettingsScreen(onBack: () -> Unit, nav: SettingsNav, providerRepository: Pro
                 io.github.nanomuse.guard.GateMode.CAUTIOUS -> "谨慎"
                 io.github.nanomuse.guard.GateMode.RELAXED -> "放手"
                 else -> "标准"
-            } + " · 密码箱 · 隐私", icon = ClawdyIcons.Shield, onClick = nav.security)
+            }, hint = "密码箱、隐私、敏感应用、已记住的授权", icon = ClawdyIcons.Shield, onClick = nav.security)
         }
-        SectionLabel("对话")
+        SectionLabel("能力")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("对话与上下文", subtitle = "自动压缩、记忆开关", icon = ClawdyIcons.Brain, onClick = nav.chatPrefs)
+            ClawdyRow("技能", hint = "启用、查看、从 GitHub 导入", icon = ClawdyIcons.Puzzle, onClick = nav.skills)
             RowDivider()
-            ClawdyRow("记忆", subtitle = "长期记忆与每日记录", icon = ClawdyIcons.Memory, onClick = nav.memory)
+            ClawdyRow("连接器", subtitle = if (mcpCount > 0) "$mcpCount 个已启用" else null, hint = "MCP：飞书、GitHub、高德地图、12306 等", icon = ClawdyIcons.Plug, onClick = nav.connectors)
             RowDivider()
-            ClawdyRow("技能", subtitle = "启用、查看、从 GitHub 导入", icon = ClawdyIcons.Puzzle, onClick = nav.skills)
+            ClawdyRow("工具连接", subtitle = "Termux · Hands · Shizuku", icon = ClawdyIcons.Wrench, onClick = nav.tools)
             RowDivider()
             ClawdyRow("定时任务", icon = ClawdyIcons.Clock, onClick = nav.scheduled)
         }
-        SectionLabel("工具")
+        SectionLabel("外观")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("工具连接", subtitle = "Termux · Hands · Shizuku", icon = ClawdyIcons.Wrench, onClick = nav.tools)
-            RowDivider()
-            ClawdyRow("Hands 设置", subtitle = "操作屏幕用的模型", icon = ClawdyIcons.Hand, onClick = nav.hands)
-            RowDivider()
-            ClawdyRow("环境变量", subtitle = "termux_run 运行时自动导出", icon = ClawdyIcons.Variable, onClick = nav.env)
-            RowDivider()
-            ClawdyRow("运行日志", subtitle = "每次工具调用的完整记录，可导出", icon = ClawdyIcons.Logs, onClick = nav.logs)
+            ClawdyRow("外观", hint = "主题、字体、字号、强调色、引用块与代码块", icon = ClawdyIcons.Palette, onClick = nav.appearance)
         }
         SectionLabel("系统")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("网络代理", subtitle = "只用于请求模型服务商", icon = ClawdyIcons.Globe, onClick = nav.network)
+            ClawdyRow("通知与后台", hint = "任务提醒、电池优化、自启动", icon = ClawdyIcons.Battery, onClick = nav.background)
             RowDivider()
-            ClawdyRow("通知与后台", subtitle = "任务提醒、电池优化、自启动", icon = ClawdyIcons.Battery, onClick = nav.background)
+            ClawdyRow("备份与恢复", hint = "导出 / 导入聊天、服务商与设置", icon = ClawdyIcons.Upload, onClick = nav.backup)
             RowDivider()
-            ClawdyRow("备份与恢复", subtitle = "导出 / 导入聊天、服务商与设置", icon = ClawdyIcons.Upload, onClick = nav.backup)
-        }
-        SectionLabel("外观")
-        ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("主题", icon = ClawdyIcons.Palette, trailing = {
-                Segmented(listOf("跟随系统", "浅色", "深色"), theme, { i -> theme = i; getAppearancePrefs(ctx).edit().putInt(KEY_THEME_MODE, i).apply() })
-            })
+            ClawdyRow("高级设置", hint = "环境变量、运行日志、网络代理、上下文与分组细节", icon = ClawdyIcons.Settings, onClick = nav.advanced)
         }
         SectionLabel("关于")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
             ClawdyRow("版本", icon = ClawdyIcons.Info, trailing = { Text(BuildConfig.VERSION_NAME, color = c.text2, style = Mono) })
             RowDivider()
-            ClawdyRow("开源许可", subtitle = "GPL-3.0 · 基于 nanoMuse / OpenMinis", icon = ClawdyIcons.File, onClick = nav.licenses)
+            ClawdyRow("开源许可", subtitle = "GPL-3.0", hint = "基于 nanoMuse / OpenMinis", icon = ClawdyIcons.File, onClick = nav.licenses)
             RowDivider()
-            ClawdyRow("反馈问题", subtitle = "github.com/QiGai77/clawdy/issues", icon = ClawdyIcons.External, onClick = {
+            ClawdyRow("反馈问题", hint = "github.com/QiGai77/clawdy/issues", icon = ClawdyIcons.External, onClick = {
                 ToolStatusLinks.open(ctx, "https://github.com/QiGai77/clawdy/issues")
             })
         }
@@ -234,7 +255,7 @@ fun ModelConfigScreen(
     ClawdyPage("模型配置", onBack) {
         SectionLabel("添加服务商")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("添加服务商", subtitle = "DeepSeek、OpenAI、Claude、Gemini、通义、智谱、Kimi、OpenRouter 或自定义", icon = ClawdyIcons.Plus, onClick = onAddProvider)
+            ClawdyRow("添加服务商", hint = "DeepSeek、OpenAI、Claude、Gemini、通义、智谱、Kimi、OpenRouter 或自定义", icon = ClawdyIcons.Plus, onClick = onAddProvider)
         }
         SectionLabel("默认模型")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
@@ -245,7 +266,7 @@ fun ModelConfigScreen(
             )
         }
         SectionLabel("密钥")
-        if (config.instances.isEmpty()) Hint("还没有密钥。先添加一个服务商，默认推荐 ${ClawdyPresets.DEFAULT_MODEL_NAME}。")
+        if (config.instances.isEmpty()) Note("还没有密钥。先添加一个服务商，默认推荐 ${ClawdyPresets.DEFAULT_MODEL_NAME}。")
         else ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
             config.instances.forEachIndexed { i, inst ->
                 if (i > 0) RowDivider()
@@ -258,7 +279,7 @@ fun ModelConfigScreen(
         }
         SectionLabel("分组管理")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("模型分组", subtitle = if (config.modelGroups.isEmpty()) "把几个模型编成一组，失败时自动换下一个" else "${config.modelGroups.size} 个分组", icon = ClawdyIcons.Grid, onClick = onGroups)
+            ClawdyRow("模型分组", subtitle = if (config.modelGroups.isEmpty()) null else "${config.modelGroups.size} 个分组", hint = "把几个模型编成一组，失败时自动换下一个", icon = ClawdyIcons.Grid, onClick = onGroups)
         }
     }
     if (picker) DefaultModelSheet(providerRepository) { picker = false }
@@ -275,7 +296,7 @@ fun DefaultModelSheet(providerRepository: ProviderRepository, onDismiss: () -> U
         Column(Modifier.navigationBarsPadding().heightIn(max = 620.dp).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
             Text("默认模型", color = c.text, style = serif(18.sp, FontWeight.SemiBold), modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
             Hint("新对话和定时任务都用它。也可以在「分组管理」里把一个分组设为默认。")
-            ClawdyRow("自动", subtitle = "不指定，沿用最近使用的模型", onClick = {
+            ClawdyRow("自动", hint = "不指定，沿用最近使用的模型", onClick = {
                 providerRepository.defaultPrimaryGroupId = null; onDismiss()
             }, trailing = { if (config.defaultPrimaryGroupId == null) Icon(ClawdyIcons.Check, null, tint = c.accent, modifier = Modifier.size(20.dp)) })
             config.instances.filter { it.isEnabled }.forEach { inst ->
@@ -316,7 +337,7 @@ fun KeyDetailScreen(providerRepository: ProviderRepository, instanceId: String, 
     val scope = rememberCoroutineScope()
     val config by providerRepository.config.collectAsState()
     val inst = config.instances.firstOrNull { it.id == instanceId }
-    if (inst == null) { ClawdyPage("密钥", onBack) { Hint("这个密钥已经删除。") }; return }
+    if (inst == null) { ClawdyPage("密钥", onBack) { Note("这个密钥已经删除。") }; return }
     var name by remember(instanceId) { mutableStateOf(inst.label) }
     var base by remember(instanceId) { mutableStateOf(inst.customBaseURL.orEmpty()) }
     var newKey by remember(instanceId) { mutableStateOf("") }
@@ -362,7 +383,7 @@ fun KeyDetailScreen(providerRepository: ProviderRepository, instanceId: String, 
             }, Modifier.weight(1f), kind = ButtonKind.SECONDARY, enabled = !busy, icon = ClawdyIcons.Retry, height = 44.dp)
             ClawdyButton("保存", { save() }, Modifier.weight(1f), enabled = dirty, height = 44.dp)
         }
-        note?.let { Hint(it) }
+        note?.let { Note(it) }
         ClawdyCard(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             SwitchRow("启用", "停用后它的模型不会出现在模型选择里", inst.isEnabled, ClawdyIcons.Zap) { on ->
                 providerRepository.updateInstance(inst.copy(isEnabled = on))
@@ -376,7 +397,7 @@ fun KeyDetailScreen(providerRepository: ProviderRepository, instanceId: String, 
         }
         SectionLabel("模型（点开可设置上下文、输出长度、推理、识图）")
         val entries = config.modelEntries.filter { it.providerInstanceId == inst.id }
-        if (entries.isEmpty()) Hint("没有模型。点「刷新模型列表」，或在下面手动添加模型 ID。")
+        if (entries.isEmpty()) Note("没有模型。点「刷新模型列表」，或在下面手动添加模型 ID。")
         else ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
             entries.sortedWith(compareBy({ it.isHidden }, { it.model.displayName.lowercase() })).forEachIndexed { i, e ->
                 if (i > 0) RowDivider(16.dp)
@@ -422,7 +443,7 @@ fun ModelEntryScreen(providerRepository: ProviderRepository, entryId: String, on
     val ctx = LocalContext.current
     val config by providerRepository.config.collectAsState()
     val e = config.modelEntries.firstOrNull { it.id == entryId }
-    if (e == null) { ClawdyPage("模型", onBack) { Hint("这个模型已经删除。") }; return }
+    if (e == null) { ClawdyPage("模型", onBack) { Note("这个模型已经删除。") }; return }
     val o = e.overrides
     val base = e.baseModel
     var name by remember(entryId) { mutableStateOf(o.displayName ?: "") }
@@ -526,7 +547,7 @@ fun GroupDetailScreen(providerRepository: ProviderRepository, groupId: String, o
     val ctx = LocalContext.current
     val config by providerRepository.config.collectAsState()
     val g = config.modelGroups.firstOrNull { it.id == groupId }
-    if (g == null) { ClawdyPage("分组", onBack) { Hint("这个分组已经删除。") }; return }
+    if (g == null) { ClawdyPage("分组", onBack) { Note("这个分组已经删除。") }; return }
     var name by remember(groupId) { mutableStateOf(g.name) }
     var limitText by remember(groupId) { mutableStateOf(g.contextLimitTokens?.toString() ?: "") }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -544,17 +565,13 @@ fun GroupDetailScreen(providerRepository: ProviderRepository, groupId: String, o
                 providerRepository.defaultPrimaryGroupId = if (on) g.id else null
             }
             RowDivider()
-            ClawdyRow("使用方式", icon = ClawdyIcons.Retry, trailing = {
-                Segmented(listOf("依次备用", "轮流使用"), if (g.strategy == RoutingStrategy.loadBalance) 1 else 0, { i ->
-                    update { it.copy(strategy = if (i == 1) RoutingStrategy.loadBalance else RoutingStrategy.fallback) }
-                })
-            })
+            SegmentedRow("使用方式", listOf("依次备用", "轮流使用"), if (g.strategy == RoutingStrategy.loadBalance) 1 else 0, { i ->
+                update { it.copy(strategy = if (i == 1) RoutingStrategy.loadBalance else RoutingStrategy.fallback) }
+            }, icon = ClawdyIcons.Retry, hint = "依次备用：前一个失败才换下一个；轮流使用：分摊额度")
             RowDivider()
-            ClawdyRow("何时换下一个", icon = ClawdyIcons.Alert, trailing = {
-                Segmented(listOf("限流/服务出错", "任何错误"), if (g.fallbackStrategy == com.openminis.app.data.model.FallbackStrategy.always) 1 else 0, { i ->
-                    update { it.copy(fallbackStrategy = if (i == 1) com.openminis.app.data.model.FallbackStrategy.always else com.openminis.app.data.model.FallbackStrategy.default) }
-                })
-            })
+            SegmentedRow("何时换下一个", listOf("限流或服务出错", "任何错误"), if (g.fallbackStrategy == com.openminis.app.data.model.FallbackStrategy.always) 1 else 0, { i ->
+                update { it.copy(fallbackStrategy = if (i == 1) com.openminis.app.data.model.FallbackStrategy.always else com.openminis.app.data.model.FallbackStrategy.default) }
+            }, icon = ClawdyIcons.Alert)
         }
         SectionLabel("上下文上限（可选）")
         Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -568,7 +585,7 @@ fun GroupDetailScreen(providerRepository: ProviderRepository, groupId: String, o
         }
         SectionLabel("成员（按顺序，点上下箭头调整）")
         val members = g.memberEntryIds.mapNotNull { id -> config.modelEntries.firstOrNull { it.id == id } }
-        if (members.isEmpty()) Hint("还没有模型，在下面勾选。")
+        if (members.isEmpty()) Note("还没有模型，在下面勾选。")
         else ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
             members.forEachIndexed { i, e ->
                 if (i > 0) RowDivider(16.dp)

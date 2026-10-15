@@ -317,9 +317,10 @@ fun StepDetailSheet(step: Step, initialTab: Int = 1, onDismiss: () -> Unit) {
             )
             Box(
                 Modifier.fillMaxWidth().heightIn(min = 132.dp, max = 340.dp).clip(ClawdyTokens.BlockShape).background(c.codeBg)
-                    .verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
+                    .verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 12.dp),
             ) {
-                Text(shown, color = c.codeText, style = Mono.copy(lineHeight = 20.sp), softWrap = false)
+                // 0.3.0: wrapped (the 0.2.0 sheet scrolled sideways and cut long Chinese lines at the left edge)
+                Text(shown, color = c.codeText, style = Mono.copy(lineHeight = 20.sp), softWrap = true)
             }
             if (truncated) Text("内容超过 64 KB，已截断", color = c.text2, style = serif(12.sp), modifier = Modifier.padding(top = 6.dp))
             Spacer(Modifier.height(16.dp))

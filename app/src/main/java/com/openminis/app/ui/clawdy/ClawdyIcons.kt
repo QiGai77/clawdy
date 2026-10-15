@@ -197,4 +197,22 @@ object ClawdyIcons {
         icon("clipboard", "M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1z", "M16 5h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2")
     }
     val Ban by lazy { icon("ban", CIRCLE_9, "M5.6 5.6l12.8 12.8") }
+
+    // 0.3.0: appearance, connectors (MCP presets) — lucide shapes (ISC), redrawn as path data
+    val Type by lazy { icon("type", "M4 7V4h16v3", "M9 20h6", "M12 4v16") }
+    val Music by lazy { icon("music", "M9 18V5l12-2v13", "M6 15a3 3 0 1 0 0 6a3 3 0 1 0 0-6z", "M18 13a3 3 0 1 0 0 6a3 3 0 1 0 0-6z") }
+    val Tv by lazy { icon("tv", "M4 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", "M17 2l-5 5l-5-5") }
+    val Map by lazy { icon("map", "M9 4l6 2l6-2v14l-6 2l-6-2l-6 2V6z", "M15 6v14", "M9 4v14") }
+    val Train by lazy { icon("train", "M8 3h8a4 4 0 0 1 4 4v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a4 4 0 0 1 4-4z", "M4 11h16", "M12 3v8", "M8 18l-2 3", "M16 18l2 3") }
+    val Cloud by lazy { icon("cloud", "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z") }
+    val Mail by lazy { icon("mail", "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M22 7l-10 6L2 7") }
+    val Calendar by lazy { icon("calendar", "M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M16 2v4", "M8 2v4", "M3 10h18") }
+    val Brush by lazy { icon("brush", "M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08", "M7.07 14.94c-1.66 0-3 1.35-3 3.02c0 1.33-2.5 1.52-2 2.02c1.08 1.1 2.49 2.02 4 2.02c2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z") }
+    val Message by lazy { icon("message", "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z") }
+    val Book by lazy { icon("book", "M4 19.5A2.5 2.5 0 0 1 6.5 17H20", "M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z") }
+    val Code by lazy { icon("code", "M16 18l6-6l-6-6", "M8 6l-6 6l6 6") }
+    val Heart by lazy { icon("heart", "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2c-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z") }
+    val Server by lazy { icon("server", "M4 3h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M4 13h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2z", "M6 7h.01", "M6 17h.01") }
+    val Quote by lazy { icon("quote", "M4 6v12", "M9 8h11", "M9 12h11", "M9 16h7") }
+    val Rows by lazy { icon("rows", "M4 6h16", "M4 12h16", "M4 18h16") }
 }

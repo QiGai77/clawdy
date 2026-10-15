@@ -135,6 +135,11 @@ object ClawdyRoutes {
     const val HANDS = "clawdy/hands"
     const val SCHEDULED = "clawdy/scheduled"
     const val LICENSES = "clawdy/licenses"
+    const val APPEARANCE = "clawdy/appearance"
+    const val ADVANCED = "clawdy/advanced"
+    const val CONNECTORS = "clawdy/connectors"
+    const val CONNECTOR = "clawdy/connector/{id}"
+    fun connector(id: String) = "clawdy/connector/" + android.net.Uri.encode(id)
 }
 
 private fun newDraft() = "__new__${UUID.randomUUID()}"
@@ -384,7 +389,7 @@ private fun ChatList(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp * com.openminis.app.ui.theme.LocalClawdyLook.current.turnGap), // 外观 → 对话密度
     ) {
         items(turns, key = { it.key }) { item ->
             when (item) {
@@ -605,7 +610,7 @@ private fun ClawdyDrawer(
         DrawerEntry(ClawdyIcons.Plus, "新对话", onNewChat, highlight = true)
         DrawerEntry(ClawdyIcons.Folder, "工作区文件", { onNavigate(ClawdyRoutes.WORKSPACE) })
         DrawerEntry(ClawdyIcons.Clock, "定时任务", { onNavigate(ClawdyRoutes.SCHEDULED) })
-        DrawerEntry(ClawdyIcons.Memory, "记忆", { onNavigate(ClawdyRoutes.MEMORY) })
+        DrawerEntry(ClawdyIcons.Memory, "人设与记忆", { onNavigate(ClawdyRoutes.PERSONA) })
         Text("最近", color = c.text2, style = serif(12.sp, FontWeight.Medium), modifier = Modifier.padding(start = 12.dp, top = 16.dp, bottom = 6.dp))
         LazyColumn(Modifier.weight(1f)) {
             items(shown, key = { it.id }) { s ->

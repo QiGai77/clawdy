@@ -79,11 +79,11 @@ fun ChatPrefsScreen(onBack: () -> Unit, onMemory: () -> Unit) {
         Hint("每个模型的上下文上限在 设置 → 模型 → 配置 → 密钥 → 模型 里改；分组也可以单独设上限。")
         SectionLabel("记忆")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            SwitchRow("使用长期记忆", "开：把长期记忆和最近几天的记录带进新对话，并允许 Clawdy 写入记忆", memory, ClawdyIcons.Memory) {
+            SwitchRow("使用记忆", "开：把 MEMORY.md 带进每次对话，并允许 Clawdy 更新它", memory, ClawdyIcons.Memory) {
                 memory = it; MemoryGlobalPrefs.setGlobalEnabled(ctx, it)
             }
             RowDivider()
-            ClawdyRow("管理记忆文件", icon = ClawdyIcons.File, onClick = onMemory)
+            ClawdyRow("人设与记忆", hint = "查看和编辑 MEMORY.md、自动记忆开关", icon = ClawdyIcons.File, onClick = onMemory)
         }
     }
 }
@@ -98,7 +98,7 @@ fun MemoryScreen(memoryRepository: MemoryRepository?, onBack: () -> Unit, onFile
     ResumeEffect { reload++ }
     ClawdyPage("记忆", onBack) {
         Hint("GLOBAL.md 是长期记忆；其余按日期记录每天发生的事。Clawdy 在对话里用 memory_write 写入。")
-        if (memoryRepository == null) { Hint("记忆功能没有启动。"); return@ClawdyPage }
+        if (memoryRepository == null) { Note("记忆功能没有启动。"); return@ClawdyPage }
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
             files.forEachIndexed { i, f ->
                 if (i > 0) RowDivider()
@@ -142,13 +142,13 @@ fun SkillsScreen(skillRepository: SkillRepository?, onBack: () -> Unit, onSkill:
     val c = Clawdy.colors
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    if (skillRepository == null) { ClawdyPage("技能", onBack) { Hint("技能功能没有启动。") }; return }
+    if (skillRepository == null) { ClawdyPage("技能", onBack) { Note("技能功能没有启动。") }; return }
     val skills by skillRepository.skills.collectAsState()
     var url by remember { mutableStateOf("") }
     var importing by remember { mutableStateOf(false) }
     ClawdyPage("技能", onBack) {
         Hint("技能是一份 SKILL.md 说明书（可带脚本），Clawdy 遇到相关任务时会先读它。关掉的技能不会出现在提示词里。")
-        if (skills.isEmpty()) Hint("还没有技能。")
+        if (skills.isEmpty()) Note("还没有技能。")
         else ClawdyCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             skills.sortedBy { it.name.lowercase() }.forEachIndexed { i, s ->
                 if (i > 0) RowDivider()
@@ -179,14 +179,14 @@ fun SkillScreen(skillRepository: SkillRepository?, skillId: String, onBack: () -
     val skills by (skillRepository?.skills ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList())).collectAsState()
     val s = skills.firstOrNull { it.id == skillId }
     var confirmDelete by remember { mutableStateOf(false) }
-    if (s == null || skillRepository == null) { ClawdyPage("技能", onBack) { Hint("这个技能已经删除。") }; return }
+    if (s == null || skillRepository == null) { ClawdyPage("技能", onBack) { Note("这个技能已经删除。") }; return }
     val files = remember(skillId) { runCatching { skillRepository.listSkillFiles(skillId) }.getOrDefault(emptyList()) }
     ClawdyPage(s.name, onBack) {
         if (s.description.isNotBlank()) Text(s.description, color = c.text, style = serif(14.sp, line = 21.sp), modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
         ClawdyCard(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             SwitchRow("启用", "版本 ${s.version}" + (s.sourceURL?.let { " · 来自 GitHub" } ?: ""), s.isEnabled, ClawdyIcons.Puzzle) { skillRepository.setEnabled(s.id, it) }
         }
-        if (files.size > 1) { SectionLabel("文件"); Hint(files.joinToString("\n")) }
+        if (files.size > 1) { SectionLabel("文件"); Note(files.joinToString("\n")) }
         SectionLabel("SKILL.md")
         Text(s.body.ifBlank { skillRepository.readSkillFile(s.id, "SKILL.md").orEmpty() }.take(20_000), color = c.codeText, style = Mono,
             modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth()
@@ -205,7 +205,7 @@ fun SkillScreen(skillRepository: SkillRepository?, skillId: String, onBack: () -
 fun EnvVarsScreen(envVarRepository: EnvVarRepository?, onBack: () -> Unit) {
     val c = Clawdy.colors
     val ctx = LocalContext.current
-    if (envVarRepository == null) { ClawdyPage("环境变量", onBack) { Hint("环境变量没有启动。") }; return }
+    if (envVarRepository == null) { ClawdyPage("环境变量", onBack) { Note("环境变量没有启动。") }; return }
     val entries by envVarRepository.entries.collectAsState()
     val privacy by EnvVarPrivacyStore.enabled.collectAsState()
     var editing by remember { mutableStateOf<EnvVarRepository.EnvVarEntry?>(null) }
@@ -354,14 +354,14 @@ fun BackgroundScreen(onBack: () -> Unit) {
         }
         SectionLabel("电量与后台")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("不受电池优化限制", subtitle = if (ignoring) "已允许，长任务不会被系统暂停" else "建议开启，否则锁屏后任务可能被系统杀掉",
+            ClawdyRow("不受电池优化限制", subtitle = if (ignoring) "已允许" else "未允许", hint = if (ignoring) "长任务不会被系统暂停" else "建议开启，否则锁屏后任务可能被系统杀掉",
                 icon = ClawdyIcons.Battery, iconTint = if (ignoring) c.success else c.amber, onClick = if (ignoring) null else ({
                     ctx.activityOrNull()?.let { PowerOptimizationManager.requestBatteryOptimizationExemption(it) }
                     Unit
                 }))
             if (oem) {
                 RowDivider()
-                ClawdyRow("自启动 / 后台管理", subtitle = "国产系统（MIUI、ColorOS、EMUI 等）还要在这里允许 Clawdy 后台运行", icon = ClawdyIcons.Settings, onClick = {
+                ClawdyRow("自启动 / 后台管理", hint = "国产系统（MIUI、ColorOS、EMUI 等）还要在这里允许 Clawdy 后台运行", icon = ClawdyIcons.Settings, onClick = {
                     ctx.activityOrNull()?.let { if (!PowerOptimizationManager.openOemAutostartSettings(it)) PowerOptimizationManager.openAppDetailsSettings(it) }
                     Unit
                 })
@@ -400,8 +400,8 @@ fun HandsSettingsScreen(providerRepository: ProviderRepository, onBack: () -> Un
                     trailing = { if (chosen == e.id) Icon(ClawdyIcons.Check, null, tint = c.accent, modifier = Modifier.size(20.dp)) })
             }
         }
-        current?.let { Hint("当前使用：${it.label}") }
-        if (candidates.isEmpty()) Hint(if (textOnly) "先在 模型配置 里添加一个服务商。" else "没有能识图的模型。打开某个模型的「识图」开关，或者关掉截图上传改用文字模式。")
+        current?.let { Note("当前使用：${it.label}") }
+        if (candidates.isEmpty()) Note(if (textOnly) "先在 模型配置 里添加一个服务商。" else "没有能识图的模型。打开某个模型的「识图」开关，或者关掉截图上传改用文字模式。")
     }
 }
 
@@ -416,7 +416,7 @@ fun ScheduledScreen(onBack: () -> Unit, onEdit: (String?) -> Unit, onRuns: (Stri
     var deleting by remember { mutableStateOf<String?>(null) }
     ClawdyPage("定时任务", onBack, actions = { ClawdyIconButton(ClawdyIcons.Plus, "新建", { onEdit(null) }, tint = c.accent) }) {
         Hint("到点后 Clawdy 会自己开一个对话执行你写好的提示词，完成后发通知。")
-        if (tasks.isEmpty()) Hint("还没有定时任务。点右上角 + 新建。")
+        if (tasks.isEmpty()) Note("还没有定时任务。点右上角 + 新建。")
         else ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
             tasks.forEachIndexed { i, t ->
                 if (i > 0) RowDivider()

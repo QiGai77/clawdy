@@ -141,7 +141,7 @@ fun SecurityScreen(onBack: () -> Unit, onVault: () -> Unit, onSensitiveApps: () 
         }
         SectionLabel("密码箱")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("密码箱", subtitle = if (vaultEntries.isEmpty()) "保存账号、银行卡、地址；Clawdy 经你同意后代填，看不到内容" else "${vaultEntries.size} 个条目 · 加密保存在本机",
+            ClawdyRow("密码箱", subtitle = if (vaultEntries.isEmpty()) "还没有条目" else "${vaultEntries.size} 个条目", hint = "保存账号、银行卡、地址；Clawdy 经你同意后代填，看不到内容，加密保存在本机",
                 icon = ClawdyIcons.Key, onClick = onVault)
         }
         SectionLabel("隐私")
@@ -158,12 +158,12 @@ fun SecurityScreen(onBack: () -> Unit, onVault: () -> Unit, onSensitiveApps: () 
                 clip = it; ClawdyPrefs.setBool(ctx, ClawdySecurity.KEY_CLIPBOARD_CONFIRM, it)
             }
             RowDivider()
-            ClawdyRow("敏感应用", subtitle = "Hands 永远不操作这些应用（$sensitiveCount 个，默认是银行和支付类）", icon = ClawdyIcons.Ban, onClick = onSensitiveApps)
+            ClawdyRow("敏感应用", subtitle = "$sensitiveCount 个应用", hint = "Hands 永远不操作这些应用，默认是银行和支付类", icon = ClawdyIcons.Ban, onClick = onSensitiveApps)
         }
         Hint("每次确认卡片都会列出这一步将发送的数据：命令大小、目标网址、附带的文件，以及模型看到的是截图还是文字。")
         SectionLabel("已记住的授权")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            if (always.isEmpty()) ClawdyRow("没有长期授权", subtitle = "在确认卡片上选择「总是允许」的会出现在这里", icon = ClawdyIcons.Check, iconTint = c.text2)
+            if (always.isEmpty()) ClawdyRow("没有长期授权", hint = "在确认卡片上选择「总是允许」的会出现在这里", icon = ClawdyIcons.Check, iconTint = c.text2)
             always.forEachIndexed { i, g ->
                 if (i > 0) RowDivider()
                 ClawdyRow(io.github.nanomuse.guard.RiskText.plainTarget(g.target), subtitle = g.label.ifBlank { g.riskClass.name.lowercase() },
@@ -173,7 +173,7 @@ fun SecurityScreen(onBack: () -> Unit, onVault: () -> Unit, onSensitiveApps: () 
                     })
             }
             RowDivider()
-            ClawdyRow("撤销所有已记住的授权", subtitle = "也会清掉本次运行中各对话的临时授权", icon = ClawdyIcons.Trash, iconTint = c.error, onClick = { confirmRevoke = true })
+            ClawdyRow("撤销所有已记住的授权", hint = "也会清掉本次运行中各对话的临时授权", icon = ClawdyIcons.Trash, iconTint = c.error, onClick = { confirmRevoke = true })
         }
     }
     if (confirmRevoke) ConfirmDialog("撤销所有授权？", "之后每个敏感操作都会重新询问你。", "撤销", onDismiss = { confirmRevoke = false }) {
@@ -254,7 +254,7 @@ fun VaultScreen(onBack: () -> Unit, onEdit: (String) -> Unit) {
     ClawdyPage("密码箱", onBack, actions = {
         if (unlocked) ClawdyIconButton(ClawdyIcons.Lock, "上锁", { Vault.lock(); unlocked = false }, tint = c.text2)
     }) {
-        Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.Top) {
+        if (showHints()) Row(Modifier.padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.Top) {
             Icon(ClawdyIcons.Shield, null, tint = c.text2, modifier = Modifier.size(16.dp).padding(top = 2.dp))
             Spacer(Modifier.width(6.dp))
             Text(
@@ -274,7 +274,7 @@ fun VaultScreen(onBack: () -> Unit, onEdit: (String) -> Unit) {
             return@ClawdyPage
         }
         SectionLabel("条目")
-        if (entries.isEmpty()) Hint("还没有条目。点下面的「添加」保存第一个账号。")
+        if (entries.isEmpty()) Note("还没有条目。点下面的「添加」保存第一个账号。")
         else ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
             entries.sortedWith(compareBy({ it.type.ordinal }, { it.label.lowercase() })).forEachIndexed { i, m ->
                 if (i > 0) RowDivider()
@@ -294,12 +294,10 @@ fun VaultScreen(onBack: () -> Unit, onEdit: (String) -> Unit) {
         }
         SectionLabel("自动上锁")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("离开后多久上锁", icon = ClawdyIcons.Clock, trailing = {
-                Segmented(ClawdySecurity.LOCK_CHOICES.map { it.second }, ClawdySecurity.LOCK_CHOICES.indexOfFirst { it.first == lockS }.coerceAtLeast(0), { i ->
-                    lockS = ClawdySecurity.LOCK_CHOICES[i].first
-                    ClawdyPrefs.setInt(ctx, ClawdySecurity.KEY_VAULT_LOCK_SECONDS, lockS)
-                })
-            })
+            SegmentedRow("离开后多久上锁", ClawdySecurity.LOCK_CHOICES.map { it.second }, ClawdySecurity.LOCK_CHOICES.indexOfFirst { it.first == lockS }.coerceAtLeast(0), { i ->
+                lockS = ClawdySecurity.LOCK_CHOICES[i].first
+                ClawdyPrefs.setInt(ctx, ClawdySecurity.KEY_VAULT_LOCK_SECONDS, lockS)
+            }, icon = ClawdyIcons.Clock)
         }
         Hint("代填（vault_fill）不受这个设置影响：每一次代填都要在确认卡片上重新验证。")
     }

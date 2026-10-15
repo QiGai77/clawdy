@@ -1,5 +1,8 @@
 package com.openminis.app.ui.theme
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -160,17 +163,26 @@ fun MinisTheme(
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     // Clawdy: serif everywhere (Source Serif 4 + Noto Serif SC), user feedback 2026-10.
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val serifFamily = androidx.compose.runtime.remember { ClawdyFonts.serif(ctx) }
-    val typography = scaledTypography(fontScale).withFamily(serifFamily)
+    // Clawdy 0.3.0 外观: font, size, accent, quote/code style, density, hints.
+    androidx.compose.runtime.remember { ClawdyLookStore.load(ctx) }
+    val look by ClawdyLookStore.state.collectAsState()
+    val family = androidx.compose.runtime.remember(look.font) {
+        when (look.font) {
+            1 -> androidx.compose.ui.text.font.FontFamily.SansSerif
+            2 -> androidx.compose.ui.text.font.FontFamily.Default
+            else -> ClawdyFonts.serif(ctx)
+        }
+    }
+    val typography = scaledTypography(fontScale * look.scale).withFamily(family)
     val chatPalette = if (darkTheme) DarkChatPalette else LightChatPalette
-    val clawdyPalette = if (darkTheme) ClawdyTokens.Dark else ClawdyTokens.Light
+    val clawdyPalette = ClawdyLookStore.palette(if (darkTheme) ClawdyTokens.Dark else ClawdyTokens.Light, look)
 
     MaterialTheme(
         colorScheme = colorScheme,
         shapes = MinisShapes,
         typography = typography,
     ) {
-        CompositionLocalProvider(LocalChatPalette provides chatPalette, LocalClawdyPalette provides clawdyPalette, content = content)
+        CompositionLocalProvider(LocalChatPalette provides chatPalette, LocalClawdyPalette provides clawdyPalette, LocalClawdyLook provides look, content = content)
     }
 }
 

@@ -205,13 +205,17 @@ private fun ParagraphBlock(
 @Composable
 private fun CodeBlockView(block: MarkdownParser.Block.CodeBlock) {
     val context = LocalContext.current
-    val codeColor = Color(0xFF4EC9B0) // Green code text
-    val bgColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    // Clawdy 外观 → 代码块: 深色 (default) or 浅色.
+    val cl = com.openminis.app.ui.theme.LocalClawdyPalette.current
+    val lightCode = com.openminis.app.ui.theme.LocalClawdyLook.current.code == 1
+    val codeColor = if (lightCode) cl.text else cl.codeText
+    val bgColor = if (lightCode) cl.accent.copy(alpha = if (cl.isDark) 0.12f else 0.06f) else cl.codeBg
+    val labelColor = if (lightCode) cl.text2 else cl.codeText.copy(alpha = 0.7f)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(bgColor),
     ) {
         // Header with language label + copy button
@@ -225,7 +229,7 @@ private fun CodeBlockView(block: MarkdownParser.Block.CodeBlock) {
             Text(
                 text = block.language.ifEmpty { "code" },
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = labelColor,
             )
             IconButton(
                 onClick = {
@@ -238,7 +242,7 @@ private fun CodeBlockView(block: MarkdownParser.Block.CodeBlock) {
                     Icons.Default.ContentCopy,
                     contentDescription = "Copy code",
                     modifier = Modifier.height(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = labelColor,
                 )
             }
         }
@@ -277,18 +281,29 @@ private fun BlockquoteView(
     // blockquote uses the app systemOrange (0xFFFF9500) at full opacity.
     // The previous primary @ 0.5 alpha disappeared into theme purple on the
     // dark palette and didn't read as a quote at all in some compositions.
-    val barColor = Color(0xFFFF9500)
+    // Clawdy: accent bar + light tint + 14dp corners (HANDOFF §1), or the 外观 → 引用块 variant.
+    val cl = com.openminis.app.ui.theme.LocalClawdyPalette.current
+    val quoteStyle = com.openminis.app.ui.theme.LocalClawdyLook.current.quote
+    val barColor = if (quoteStyle == 1) cl.text2.copy(alpha = 0.6f) else cl.accent
+    val qShape = RoundedCornerShape(14.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                when (quoteStyle) {
+                    0 -> Modifier.clip(qShape).background(cl.accent.copy(alpha = if (cl.isDark) 0.14f else 0.08f))
+                    2 -> Modifier.clip(qShape).border(1.dp, cl.border, qShape).background(cl.surface)
+                    else -> Modifier
+                },
+            )
             .drawBehind {
-                drawRect(
+                if (quoteStyle != 2) drawRect(
                     color = barColor,
                     topLeft = Offset(0f, 0f),
                     size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height),
                 )
             }
-            .padding(start = 12.dp),
+            .padding(start = 14.dp, end = if (quoteStyle == 1) 0.dp else 12.dp, top = if (quoteStyle == 1) 0.dp else 8.dp, bottom = if (quoteStyle == 1) 0.dp else 8.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             // Inner content uses onSurfaceVariant so quoted text reads as

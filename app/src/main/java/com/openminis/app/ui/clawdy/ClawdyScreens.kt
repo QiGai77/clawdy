@@ -190,24 +190,47 @@ fun ToolsScreen(onBack: () -> Unit) {
     var a11yGuide by remember { mutableStateOf(false) }
 
     ClawdyPage("工具连接", onBack) {
-        Text("每次回到这一页都会重新检测", color = c.text2, style = serif(12.sp), modifier = Modifier.padding(horizontal = 20.dp))
-        // Termux
+        Hint("每次回到这一页都会重新检测")
+        // Termux (0.3.0: real diagnosis + a live RUN_COMMAND test + the one-line setup script)
+        val diag = remember(st) { com.openminis.app.clawdy.TermuxDiag.read(ctx) }
+        var testing by remember { mutableStateOf(false) }
+        var test by remember { mutableStateOf<com.openminis.app.clawdy.TermuxDiag.TestResult?>(null) }
+        val scope = rememberCoroutineScope()
         ToolCard(ClawdyIcons.Terminal, c.termux, "Termux", st.termuxReady,
-            if (st.termuxReady) "已连接 · 命令在 ~/clawdy/<任务> 里运行" else "完整的 Linux 环境：python、node、chromium、pandoc…") {
-            CheckLine("已安装 Termux", st.termuxInstalled)
-            CheckLine("已开启 allow-external-apps（无法自动检测）", null)
+            if (st.termuxReady) "已连接 · 命令在 ~/clawdy/<任务> 里运行" else "Clawdy 的 Linux 环境，用来跑 python、node、pandoc 等") {
+            CheckLine("已安装 Termux" + (diag.versionName?.let { "（$it · ${diag.build}）" } ?: ""), st.termuxInstalled)
+            if (st.termuxInstalled) CheckLine("Termux 提供「运行命令」权限", diag.permissionDefined)
             CheckLine("已授予「在 Termux 中运行命令」权限", st.termuxPermission)
-            Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!st.termuxInstalled) ClawdyButton("去下载（F-Droid）", { ToolStatus.market(ctx, "com.termux", ToolStatus.TERMUX_FDROID) }, Modifier.weight(1f), height = 40.dp)
-                else {
-                    ClawdyButton("复制命令", { copyText(ctx, ToolStatus.TERMUX_ALLOW_CMD) }, Modifier.weight(1f), kind = ButtonKind.SECONDARY, height = 40.dp, icon = ClawdyIcons.Copy)
-                    if (!st.termuxPermission) ClawdyButton("授权", {
-                        termuxPerm.launch(TermuxTool.PERMISSION_RUN_COMMAND)
-                    }, Modifier.weight(1f), height = 40.dp)
-                    else ClawdyButton("打开 Termux", { ToolStatus.launch(ctx, "com.termux") }, Modifier.weight(1f), height = 40.dp)
+            CheckLine("已开启 allow-external-apps（点「测试连接」确认）", test?.ok)
+            if (diag.verdict != com.openminis.app.clawdy.TermuxDiag.Verdict.READY) {
+                Column(Modifier.padding(top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.amber.copy(alpha = 0.12f)).padding(12.dp)) {
+                    Text(diag.title, color = c.text, style = serif(14.sp, FontWeight.SemiBold, 20.sp))
+                    Text(diag.advice, color = c.text, style = serif(13.sp, line = 20.sp), modifier = Modifier.padding(top = 4.dp))
                 }
             }
-            if (st.termuxInstalled) CodeLine(ToolStatus.TERMUX_ALLOW_CMD)
+            Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                when (diag.verdict) {
+                    com.openminis.app.clawdy.TermuxDiag.Verdict.NOT_INSTALLED, com.openminis.app.clawdy.TermuxDiag.Verdict.PLAY_BUILD, com.openminis.app.clawdy.TermuxDiag.Verdict.NOT_DEFINED ->
+                        ClawdyButton("去下载（F-Droid）", { ToolStatus.market(ctx, "com.termux", ToolStatus.TERMUX_FDROID) }, Modifier.weight(1f), height = 40.dp)
+                    com.openminis.app.clawdy.TermuxDiag.Verdict.INSTALLED_AFTER, com.openminis.app.clawdy.TermuxDiag.Verdict.NOT_GRANTED -> {
+                        ClawdyButton("授权", { termuxPerm.launch(TermuxTool.PERMISSION_RUN_COMMAND) }, Modifier.weight(1f), height = 40.dp)
+                        ClawdyButton("应用权限页", { ToolStatus.safeStart(ctx, ToolStatus.appDetails(ctx)) }, Modifier.weight(1f), kind = ButtonKind.SECONDARY, height = 40.dp)
+                    }
+                    com.openminis.app.clawdy.TermuxDiag.Verdict.READY -> {
+                        ClawdyButton(if (testing) "测试中…" else "测试连接", {
+                            testing = true; test = null
+                            scope.launch { test = com.openminis.app.clawdy.TermuxDiag.test(ctx); testing = false }
+                        }, Modifier.weight(1f), enabled = !testing, height = 40.dp, icon = ClawdyIcons.Zap)
+                        ClawdyButton("打开 Termux", { ToolStatus.launch(ctx, "com.termux") }, Modifier.weight(1f), kind = ButtonKind.SECONDARY, height = 40.dp)
+                    }
+                }
+            }
+            test?.let { Text(it.message, color = if (it.ok) c.success else c.error, style = serif(13.sp, line = 20.sp), modifier = Modifier.padding(top = 8.dp)) }
+            if (st.termuxInstalled && diag.verdict != com.openminis.app.clawdy.TermuxDiag.Verdict.PLAY_BUILD) {
+                Text("一键安装与诊断：在 Termux 里粘贴运行", color = c.text2, style = serif(12.sp), modifier = Modifier.padding(top = 12.dp))
+                CopyLine(com.openminis.app.clawdy.TermuxDiag.SETUP_ONE_LINER)
+                Hint("会开启 allow-external-apps、安装 python / node / pandoc 等，最后打印一张体检表。只想体检：在命令末尾加上 -s -- --diagnose。")
+            }
         }
         // Hands
         ToolCard(ClawdyIcons.Hand, c.accent, "Hands 无障碍", st.handsReady && handsOn,
@@ -242,17 +265,17 @@ fun ToolsScreen(onBack: () -> Unit) {
         }
         SectionLabel("权限")
         ClawdyCard(Modifier.padding(horizontal = 16.dp)) {
-            ClawdyRow("悬浮窗", subtitle = "Hands 工作时显示进度和停止按钮", icon = ClawdyIcons.Layers,
+            ClawdyRow("悬浮窗", hint = "Hands 工作时显示进度和停止按钮", icon = ClawdyIcons.Layers,
                 trailing = { ClawdySwitch(st.overlay, { ToolStatus.safeStart(ctx, ToolStatus.overlaySettings(ctx)) }) })
             RowDivider()
-            ClawdyRow("通知", subtitle = "后台确认敏感操作、任务完成提醒", icon = ClawdyIcons.Bell,
+            ClawdyRow("通知", hint = "后台确认敏感操作、任务完成提醒", icon = ClawdyIcons.Bell,
                 trailing = { ClawdySwitch(st.notifications, {
                     if (Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                         notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                     else ToolStatus.safeStart(ctx, ToolStatus.notificationSettings(ctx))
                 }) })
             RowDivider()
-            ClawdyRow("后台运行不受限制", subtitle = "电池优化白名单，长任务不被系统杀掉", icon = ClawdyIcons.Battery,
+            ClawdyRow("后台运行不受限制", hint = "电池优化白名单，长任务不被系统杀掉", icon = ClawdyIcons.Battery,
                 trailing = { ClawdySwitch(st.batteryUnrestricted, { ToolStatus.safeStart(ctx, ToolStatus.batterySettings(ctx)) }) })
         }
     }
@@ -329,6 +352,17 @@ private fun CheckLine(text: String, ok: Boolean?) {
     }
 }
 
+/** A one-line command with a copy button; the text scrolls sideways instead of wrapping. */
+@Composable
+fun CopyLine(cmd: String) {
+    val c = Clawdy.colors
+    val ctx = LocalContext.current
+    Row(Modifier.padding(top = 6.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.codeBg).padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(cmd, color = c.codeText, style = Mono, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(vertical = 10.dp))
+        ClawdyIconButton(ClawdyIcons.Copy, "复制", { copyText(ctx, cmd) }, tint = c.codeText, size = 40.dp, iconSize = 18.dp)
+    }
+}
+
 @Composable
 private fun CodeLine(cmd: String) {
     val c = Clawdy.colors
@@ -373,12 +407,9 @@ fun OnboardingScreen(onAddProvider: () -> Unit, onDone: () -> Unit) {
                         CheckLine("1. 安装 Termux（F-Droid 或 GitHub 版）", st.termuxInstalled)
                         if (!st.termuxInstalled) ClawdyButton("去下载", { ToolStatus.market(ctx, "com.termux", ToolStatus.TERMUX_FDROID) }, Modifier.fillMaxWidth().padding(vertical = 8.dp), height = 40.dp)
                         Spacer(Modifier.height(6.dp))
-                        CheckLine("2. 在 Termux 里运行这行命令", null)
-                        CodeLine(ToolStatus.TERMUX_ALLOW_CMD)
-                        Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ClawdyButton("复制命令", { copyText(ctx, ToolStatus.TERMUX_ALLOW_CMD) }, Modifier.weight(1f), kind = ButtonKind.SECONDARY, height = 40.dp, icon = ClawdyIcons.Copy)
-                            ClawdyButton("打开 Termux", { if (!ToolStatus.launch(ctx, "com.termux")) Toast.makeText(ctx, "还没安装 Termux", Toast.LENGTH_SHORT).show() }, Modifier.weight(1f), kind = ButtonKind.SECONDARY, height = 40.dp)
-                        }
+                        CheckLine("2. 在 Termux 里粘贴运行这行命令（一键安装）", null)
+                        CopyLine(com.openminis.app.clawdy.TermuxDiag.SETUP_ONE_LINER)
+                        ClawdyButton("打开 Termux", { if (!ToolStatus.launch(ctx, "com.termux")) Toast.makeText(ctx, "还没安装 Termux", Toast.LENGTH_SHORT).show() }, Modifier.fillMaxWidth().padding(vertical = 8.dp), kind = ButtonKind.SECONDARY, height = 40.dp)
                         CheckLine("3. 授予「在 Termux 中运行命令」权限", st.termuxPermission)
                         if (!st.termuxPermission) ClawdyButton("授权", { termuxPerm.launch(TermuxTool.PERMISSION_RUN_COMMAND) }, Modifier.fillMaxWidth().padding(top = 8.dp), height = 40.dp)
                     }
