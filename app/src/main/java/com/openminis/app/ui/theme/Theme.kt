@@ -158,15 +158,19 @@ fun MinisTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-    val typography = scaledTypography(fontScale)
+    // Clawdy: serif everywhere (Source Serif 4 + Noto Serif SC), user feedback 2026-10.
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val serifFamily = androidx.compose.runtime.remember { ClawdyFonts.serif(ctx) }
+    val typography = scaledTypography(fontScale).withFamily(serifFamily)
     val chatPalette = if (darkTheme) DarkChatPalette else LightChatPalette
+    val clawdyPalette = if (darkTheme) ClawdyTokens.Dark else ClawdyTokens.Light
 
     MaterialTheme(
         colorScheme = colorScheme,
         shapes = MinisShapes,
         typography = typography,
     ) {
-        CompositionLocalProvider(LocalChatPalette provides chatPalette, content = content)
+        CompositionLocalProvider(LocalChatPalette provides chatPalette, LocalClawdyPalette provides clawdyPalette, content = content)
     }
 }
 
@@ -222,3 +226,21 @@ private fun scaledTypography(factor: Float): Typography {
         labelSmall = base.labelSmall.scale(factor),
     )
 }
+
+private fun Typography.withFamily(f: androidx.compose.ui.text.font.FontFamily): Typography = Typography(
+    displayLarge = displayLarge.copy(fontFamily = f),
+    displayMedium = displayMedium.copy(fontFamily = f),
+    displaySmall = displaySmall.copy(fontFamily = f),
+    headlineLarge = headlineLarge.copy(fontFamily = f),
+    headlineMedium = headlineMedium.copy(fontFamily = f),
+    headlineSmall = headlineSmall.copy(fontFamily = f),
+    titleLarge = titleLarge.copy(fontFamily = f),
+    titleMedium = titleMedium.copy(fontFamily = f),
+    titleSmall = titleSmall.copy(fontFamily = f),
+    bodyLarge = bodyLarge.copy(fontFamily = f),
+    bodyMedium = bodyMedium.copy(fontFamily = f),
+    bodySmall = bodySmall.copy(fontFamily = f),
+    labelLarge = labelLarge.copy(fontFamily = f),
+    labelMedium = labelMedium.copy(fontFamily = f),
+    labelSmall = labelSmall.copy(fontFamily = f),
+)
