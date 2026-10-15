@@ -69,10 +69,10 @@ object Hands {
     }
 
     fun readiness(context: Context): Readiness = Readiness(
-        androidOk = Build.VERSION.SDK_INT >= MIN_SDK,
+        androidOk = Build.VERSION.SDK_INT >= MIN_SDK || textOnly(context),
         serviceOn = MinisAccessibilityService.getInstance() != null,
         overlayOk = Settings.canDrawOverlays(context),
-        model = screenModel(context),
+        model = screenModel(context) ?: if (textOnly(context)) textModel(context) else null,
     )
 
     /** Usable right now: switched on and every prerequisite in place. */
@@ -176,6 +176,28 @@ object Hands {
         return all.firstOrNull { Regex("vl|vision", RegexOption.IGNORE_CASE).containsMatchIn(it.modelId) } ?: all.firstOrNull()
     }
 
+    /**
+     * Clawdy 「截图上传」off: the screen goes to the model as text, so any chat model can be the
+     * hands — the one chosen for the hands, else the last used, else the default group's first.
+     */
+    fun textModel(context: Context): ScreenModel? {
+        val repo = repo(context) ?: return null
+        val cfg = repo.config.value
+        fun of(e: ModelEntry?, why: Why): ScreenModel? {
+            e ?: return null
+            val inst = cfg.instances.firstOrNull { it.id == e.providerInstanceId && it.isEnabled } ?: return null
+            val key = repo.usableApiKey(inst) ?: return null
+            return ScreenModel(inst, e, key, why)
+        }
+        modelEntryId(context)?.let { id -> of(cfg.modelEntries.firstOrNull { it.id == id }, Why.CHOSEN) }?.let { return it }
+        of(repo.lastUsedVisibleEntry(), Why.CHAT)?.let { return it }
+        val g = cfg.modelGroups.firstOrNull { it.id == cfg.defaultPrimaryGroupId } ?: cfg.modelGroups.firstOrNull()
+        g?.memberEntryIds?.firstNotNullOfOrNull { id -> of(cfg.modelEntries.firstOrNull { it.id == id }, Why.GROUP) }?.let { return it }
+        return repo.allVisibleEntries().firstNotNullOfOrNull { of(it, Why.ANY) }
+    }
+
+    private fun textOnly(context: Context) = !com.openminis.app.clawdy.ClawdySecurity.screenshotUpload(context)
+
     private fun repo(context: Context): ProviderRepository? = (context.applicationContext as? MinisApp)?.providerRepositoryOrNull
 
     // ── a run in progress ──────────────────────────────────────────────────
@@ -191,6 +213,12 @@ object Hands {
      * run that gets them hands them back in [HandsOperator.run]'s finish.
      */
     internal fun claim(): Boolean = _active.compareAndSet(expect = false, update = true)
+
+    /**
+     * Clawdy: the app the last run left on screen and when (a run ends by bringing Clawdy back to
+     * the front), so `vault_fill` can return to that app's login form.
+     */
+    @Volatile var lastOperated: Pair<String, Long>? = null
 
     /** The run in progress, so Stop can reach it from anywhere. */
     @Volatile internal var current: HandsOperator? = null

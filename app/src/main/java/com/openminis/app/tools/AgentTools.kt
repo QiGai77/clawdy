@@ -32,6 +32,8 @@ object AgentTools {
         if (com.openminis.app.clawdy.ClawdyFlags.SANDBOX_IN_AGENT) add(shellExecuteDefinition())
         add(TermuxTool.definition())
         add(com.openminis.app.clawdy.HandsTool.definition())
+        add(com.openminis.app.clawdy.vault.VaultTools.listDefinition())
+        add(com.openminis.app.clawdy.vault.VaultTools.fillDefinition())
         add(FileReadTool.definition())
         add(FileWriteTool.definition())
         add(FileEditTool.definition())

@@ -81,7 +81,12 @@ class HandsOperator(private val context: Context) {
         val model: String?,
     )
 
-    private class Turn(val userText: String, val image: ByteArray?, var assistant: String)
+    private class Turn(val userText: String, val image: ByteArray?, var assistant: String, val screenText: String? = null)
+
+    /** Clawdy 安全 settings, read once per run. */
+    private val textOnly = !com.openminis.app.clawdy.ClawdySecurity.screenshotUpload(context)
+    private val guardPasswordFields = com.openminis.app.clawdy.ClawdySecurity.noPasswordFields(context)
+    private val sensitiveApps = com.openminis.app.clawdy.ClawdySecurity.sensitiveApps(context)
 
     private val stop = AtomicBoolean(false)
     private val stopReason = AtomicReference<String?>(null)
@@ -115,7 +120,7 @@ class HandsOperator(private val context: Context) {
         val traceDir = traceDir(opts.sessionId, runId)
         var lastScreen: String? = null
         var steps = 0
-        val model = Hands.screenModel(context)
+        val model = Hands.screenModel(context) ?: if (textOnly) Hands.textModel(context) else null
         Hands.setActive(true)
         Hands.current = this
         gateSession = opts.sessionId ?: "hands"
@@ -131,13 +136,13 @@ class HandsOperator(private val context: Context) {
         try {
             val svc = MinisAccessibilityService.getInstance()
                 ?: return finish(Outcome.Failed("the accessibility service is not running"), steps, runId, lastScreen, traceDir, log, model?.label)
-            if (Build.VERSION.SDK_INT < Hands.MIN_SDK) {
+            if (!textOnly && Build.VERSION.SDK_INT < Hands.MIN_SDK) {
                 return finish(Outcome.Failed("screenshots need Android 11"), steps, runId, lastScreen, traceDir, log, model?.label)
             }
-            if (model == null) return finish(Outcome.Failed("no model that can see pictures is configured"), steps, runId, lastScreen, traceDir, log, null)
+            if (model == null) return finish(Outcome.Failed(if (textOnly) "no chat model is configured" else "no model that can see pictures is configured"), steps, runId, lastScreen, traceDir, log, null)
             val provider = ProviderFactory.create(model.instance, model.apiKey, model.entry.model, context)
             val apps = HandsApps.launchable(context)
-            val system = HandsPrompt.system(opts.task, apps.map { it.label }.take(MAX_APPS_IN_PROMPT), opts.agentName, opts.language)
+            val system = HandsPrompt.system(opts.task, apps.map { it.label }.take(MAX_APPS_IN_PROMPT), opts.agentName, opts.language, textOnly, guardPasswordFields)
             val turns = mutableListOf<Turn>()
             var lastResult: String? = null
             var formatErrors = 0
@@ -150,6 +155,9 @@ class HandsOperator(private val context: Context) {
             // The app the caller named comes first, before the model looks.
             opts.appHint?.takeIf { it.isNotBlank() }?.let { hint ->
                 val app = HandsApps.resolve(context, hint)
+                if (app != null && app.packageName in sensitiveApps) {
+                    return finish(Outcome.Infeasible(sensitiveMessage(app.label)), steps, runId, lastScreen, traceDir, log, model.label)
+                }
                 lastResult = if (app != null && HandsApps.open(context, app)) {
                     Thread.sleep(OPEN_APP_SETTLE_MS); "opened ${app.label}."
                 } else "no installed app matches “$hint”; open the one you need yourself."
@@ -166,25 +174,45 @@ class HandsOperator(private val context: Context) {
                 capsule.working(steps, context.getString(com.openminis.app.R.string.nm_hands_looking))
 
                 // ── look ──
-                val shot = screenshot(svc) ?: return finish(Outcome.Failed("could not take a screenshot"), steps, runId, lastScreen, traceDir, log, model.label)
-                val screenW = shot.width
-                val screenH = shot.height
-                val jpeg = encode(shot)
-                shot.recycle()
-                lastScreen = save(traceDir, steps, jpeg, runId)
-                if (jpeg.black) {
-                    blackScreens++
-                    if (blackScreens > 2) return finish(Outcome.Infeasible("the screen stays protected (black screenshot); the app does not allow it to be read"), steps, runId, lastScreen, traceDir, log, model.label)
-                    log += "step $steps: protected screen — handed to the user"
-                    val cont = waitForUser(context.getString(com.openminis.app.R.string.nm_hands_protected_screen))
-                    if (!cont) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
-                    lastResult = "the screen was protected (payment or banking); the user did that part and says to continue."
-                    continue
+                // Clawdy: an app on the 敏感应用 list is never operated, whatever the task says.
+                svc.foregroundPackage().first?.takeIf { it in sensitiveApps }?.let { pkg ->
+                    log += "step $steps: $pkg is on the sensitive-apps list — stopped"
+                    return finish(Outcome.Infeasible(sensitiveMessage(HandsApps.labelOf(context, pkg) ?: pkg)), steps, runId, lastScreen, traceDir, log, model.label)
                 }
-                blackScreens = 0
+                var screenW = 0
+                var screenH = 0
+                val jpeg: Jpeg
+                var screenText: String? = null
+                if (textOnly) {
+                    // 截图上传 off: the accessibility text of the screen, nothing else, goes to the model.
+                    val d = ScreenText.dump(svc, context.packageName, com.openminis.app.clawdy.vault.VaultTools.redactions())
+                    val dm = context.resources.displayMetrics
+                    screenW = dm.widthPixels; screenH = dm.heightPixels
+                    screenText = d.text.ifBlank { "(no readable text on this screen — it may be a picture, a game or a protected page; use take_over if you cannot continue)" }
+                    jpeg = Jpeg(ByteArray(0), false, d.print)
+                    lastScreen = null
+                    traceDir?.let { dir -> runCatching { File(dir, "step-$steps.txt").writeText(screenText) } }
+                } else {
+                    val shot = screenshot(svc) ?: return finish(Outcome.Failed("could not take a screenshot"), steps, runId, lastScreen, traceDir, log, model.label)
+                    screenW = shot.width
+                    screenH = shot.height
+                    jpeg = encode(shot)
+                    shot.recycle()
+                    lastScreen = save(traceDir, steps, jpeg, runId)
+                    if (jpeg.black) {
+                        blackScreens++
+                        if (blackScreens > 2) return finish(Outcome.Infeasible("the screen stays protected (black screenshot); the app does not allow it to be read"), steps, runId, lastScreen, traceDir, log, model.label)
+                        log += "step $steps: protected screen — handed to the user"
+                        val cont = waitForUser(context.getString(com.openminis.app.R.string.nm_hands_protected_screen))
+                        if (!cont) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
+                        lastResult = "the screen was protected (payment or banking); the user did that part and says to continue."
+                        continue
+                    }
+                    blackScreens = 0
+                }
 
                 // ── think ──
-                val messages = buildMessages(turns, HandsPrompt.turnText(steps, lastResult), jpeg.bytes)
+                val messages = buildMessages(turns, HandsPrompt.turnText(steps, lastResult), jpeg.bytes, screenText)
                 val reply = try {
                     runBlocking {
                         withTimeout(MODEL_TIMEOUT_MS) {
@@ -200,7 +228,7 @@ class HandsOperator(private val context: Context) {
                     continue
                 }
                 if (stop.get()) return finish(Outcome.Stopped(stopReason.get() ?: "stopped"), steps, runId, lastScreen, traceDir, log, model.label)
-                val turn = Turn(HandsPrompt.turnText(steps, lastResult), jpeg.bytes, reply)
+                val turn = Turn(HandsPrompt.turnText(steps, lastResult), jpeg.bytes.takeIf { it.isNotEmpty() }, reply, screenText)
                 turns += turn
                 val parsed = try {
                     HandsAction.parse(reply)
@@ -307,7 +335,7 @@ class HandsOperator(private val context: Context) {
                         Thread.sleep(SWIPE_SETTLE_MS)
                     }
                     is HandsAction.InputText -> {
-                        if (!TapWords.looksSecret(action.field)) capsule.stage.say(fxLabel(action))
+                        if (!TapWords.looksSecret(action.field) && focusedField(svc)?.isPassword != true) capsule.stage.say(fxLabel(action))
                         lastResult = typeText(svc, action)
                         if (lastResult == HANDOFF) {
                             val cont = waitForUser(context.getString(com.openminis.app.R.string.nm_hands_secret_field))
@@ -331,7 +359,9 @@ class HandsOperator(private val context: Context) {
                     }
                     is HandsAction.OpenApp -> {
                         val app = HandsApps.resolve(context, action.appName)
-                        lastResult = if (app != null && HandsApps.open(context, app)) {
+                        lastResult = if (app != null && app.packageName in sensitiveApps) {
+                            "${app.label} is on the user's sensitive-apps list; Hands may not operate it. Finish with goal_status infeasible and say so."
+                        } else if (app != null && HandsApps.open(context, app)) {
                             capsule.stage.say(context.getString(com.openminis.app.R.string.nm_hands_fx_open, app.label))
                             Thread.sleep(OPEN_APP_SETTLE_MS); "opened ${app.label}."
                         } else {
@@ -368,6 +398,11 @@ class HandsOperator(private val context: Context) {
             Hands.current = null
             Hands.setActive(false)
             SessionActivityTracker.setCameraSuppressActive(false)
+            runCatching {
+                MinisAccessibilityService.getInstance()?.foregroundPackage()?.first
+                    ?.takeIf { it != context.packageName && it != "com.android.systemui" }
+                    ?.let { Hands.lastOperated = it to System.currentTimeMillis() }
+            }
             capsule.bringAppToFront(opts.sessionId)
         }
     }
@@ -506,11 +541,12 @@ class HandsOperator(private val context: Context) {
 
     /** Types into the field with the cursor; [HANDOFF] when that field is a secret. */
     private fun typeText(svc: MinisAccessibilityService, action: HandsAction.InputText): String {
-        if (TapWords.looksSecret(action.field)) return HANDOFF
+        // Clawdy 「不在密码框上操作」(default on): the screen model never types into a secret field.
+        if (guardPasswordFields && TapWords.looksSecret(action.field)) return HANDOFF
         val node = focusedField(svc) ?: return "no text field has the cursor; tap the field first, then type in the next turn."
-        if (node.isPassword) return HANDOFF
+        if (guardPasswordFields && node.isPassword) return HANDOFF
         val hint = listOfNotNull(node.hintText?.toString(), node.contentDescription?.toString()).joinToString(" ")
-        if (hint.isNotBlank() && TapWords.looksSecret(hint)) return HANDOFF
+        if (guardPasswordFields && hint.isNotBlank() && TapWords.looksSecret(hint)) return HANDOFF
         val ok = svc.setNodeText(node, action.text)
         return if (ok) "typed “${action.text.take(60)}” into the field." else "the field did not accept text (ACTION_SET_TEXT failed); tap it and try again."
     }
@@ -582,8 +618,18 @@ class HandsOperator(private val context: Context) {
         return dark * 100 / print.size >= 98
     }
 
-    private fun buildMessages(turns: List<Turn>, currentText: String, current: ByteArray): List<LLMMessage> {
+    private fun buildMessages(turns: List<Turn>, currentText: String, current: ByteArray, currentScreenText: String? = null): List<LLMMessage> {
         val out = mutableListOf<LLMMessage>()
+        if (currentScreenText != null) {
+            // text mode: earlier screens are only described, the current one is the text listing
+            turns.forEach { t ->
+                out += LLMMessage(LLMMessage.Role.USER, content = t.userText + "\n" + HandsPrompt.OLDER_SCREEN)
+                out += LLMMessage(LLMMessage.Role.ASSISTANT, content = t.assistant)
+            }
+            val body = currentText + "\n\nScreen (accessibility text, centres on the 0–999 grid):\n" + currentScreenText
+            out += LLMMessage(LLMMessage.Role.USER, content = body)
+            return out
+        }
         val withImage = turns.size - HISTORY_IMAGES
         turns.forEachIndexed { i, t ->
             val parts = mutableListOf<AgentContentPart>(AgentContentPart.Text(t.userText))
@@ -599,6 +645,9 @@ class HandsOperator(private val context: Context) {
         )
         return out
     }
+
+    private fun sensitiveMessage(app: String) =
+        "$app is on the user's sensitive-apps list (设置 → 安全 → 敏感应用), so Hands does not operate it. Tell the user to do this part themselves."
 
     // ── the trace ──────────────────────────────────────────────────────────
 

@@ -30,6 +30,8 @@ data class RiskRequest(
     /** For browser requests: the element's own text. */
     val elementText: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
+    /** Clawdy 工作模式「谨慎」: nothing on this card may be remembered. */
+    val cautious: Boolean = false,
 ) {
     /**
      * What may be remembered. Nothing alarming (a warning) is ever remembered. "For this chat"
@@ -38,11 +40,22 @@ data class RiskRequest(
      * confirms with the phone's screen lock ([needsCredential]), and the first time is always
      * asked because the grant can only come from the card.
      */
-    val canSession: Boolean get() = assessment.warnings.isEmpty() && assessment.riskClass != RiskClass.MONEY && kind != GuardKind.DEVICE
-    val canAlways: Boolean get() = assessment.warnings.isEmpty() && !assessment.target.isNullOrBlank()
+    val canSession: Boolean get() = !cautious && assessment.warnings.isEmpty() && assessment.riskClass != RiskClass.MONEY && kind != GuardKind.DEVICE
+    val canAlways: Boolean get() = !cautious && assessment.warnings.isEmpty() && !assessment.target.isNullOrBlank()
     val canRemember: Boolean get() = canSession || canAlways
     val needsCredential: Boolean get() = assessment.riskClass == RiskClass.MONEY
 }
+
+/**
+ * Clawdy 工作模式 (Settings → 安全 → 工作模式), set by `ClawdySecurity.apply`:
+ * - [CAUTIOUS] 谨慎: every sensitive action asks, every time; installs ask too; nothing is remembered
+ *   and remembered grants are ignored.
+ * - [STANDARD] 标准: upstream behaviour; the card offers "本对话内同类操作不再询问" (checked by default).
+ * - [RELAXED] 放手: only payments, sending messages (screen / browser), deletions and always-ask
+ *   warnings ask; network transfers from the shell and other-device requests run with a notice; an
+ *   approval is remembered for the rest of the chat automatically (never for money).
+ */
+enum class GateMode { CAUTIOUS, STANDARD, RELAXED }
 
 enum class RiskDecision { ALLOW_ONCE, ALLOW_SESSION, ALLOW_ALWAYS, DENY, TIMEOUT }
 
@@ -62,6 +75,9 @@ sealed class GateOutcome {
 object RiskGate {
     private const val TAG = "RiskGate"
     const val TIMEOUT_MS: Long = 180_000
+
+    /** The user's 工作模式; see [GateMode]. */
+    @Volatile var mode: GateMode = GateMode.STANDARD
 
     private val _pending = MutableStateFlow<RiskRequest?>(null)
     val pending: StateFlow<RiskRequest?> = _pending.asStateFlow()
@@ -185,12 +201,22 @@ object RiskGate {
         pageUrl: String? = null,
         elementText: String? = null,
     ): GateOutcome {
-        if (!assessment.needsApproval) {
+        val m = mode
+        val cautious = m == GateMode.CAUTIOUS
+        val asksInstall = cautious && assessment.riskClass == RiskClass.INSTALL
+        if (!assessment.needsApproval && !asksInstall) {
             return GateOutcome.Allowed(
                 if (assessment.riskClass == RiskClass.INSTALL) INSTALL_NOTICE else null,
             )
         }
-        if (assessment.warnings.isEmpty() && Grants.allows(assessment.riskClass, assessment.target, sessionId)) {
+        if (m == GateMode.RELAXED && assessment.warnings.isEmpty() &&
+            (assessment.riskClass == RiskClass.REMOTE ||
+                (assessment.riskClass == RiskClass.OUTBOUND && (kind == GuardKind.SHELL || kind == GuardKind.COMPUTER)))
+        ) {
+            AppLogger.info(TAG, "relaxed mode: ran without asking (${assessment.riskClass})")
+            return GateOutcome.Allowed(relaxedNotice(assessment.reason))
+        }
+        if (!cautious && assessment.warnings.isEmpty() && Grants.allows(assessment.riskClass, assessment.target, sessionId)) {
             AppLogger.info(TAG, "covered by a grant: ${Grants.key(assessment.riskClass, assessment.target)}")
             // A payment that ran on a standing grant is said out loud every time; the person
             // chose that, and the line is how they keep track of it.
@@ -205,9 +231,14 @@ object RiskGate {
             preview = preview,
             pageUrl = pageUrl,
             elementText = elementText,
+            cautious = cautious,
         )
         return when (ask(request)) {
-            RiskDecision.ALLOW_ONCE -> GateOutcome.Allowed()
+            RiskDecision.ALLOW_ONCE -> {
+                // 放手: one yes covers the same kind of action on the same object for the rest of the chat.
+                if (m == GateMode.RELAXED && request.canSession) Grants.grantSession(assessment.riskClass, sessionId, assessment.reason, assessment.target)
+                GateOutcome.Allowed()
+            }
             RiskDecision.ALLOW_SESSION -> {
                 if (request.canSession) Grants.grantSession(assessment.riskClass, sessionId, assessment.reason, assessment.target)
                 GateOutcome.Allowed()
@@ -228,6 +259,9 @@ object RiskGate {
             )
         }
     }
+
+    fun relaxedNotice(reason: String): String =
+        "[Clawdy] Ran without asking because the user chose the 放手 work mode ($reason). Mention it to the user in one line."
 
     const val INSTALL_NOTICE =
         "[nanoMuse] This command installs software; it ran without asking. Mention it to the user in one line."

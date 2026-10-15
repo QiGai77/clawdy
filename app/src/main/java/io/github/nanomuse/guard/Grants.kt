@@ -104,6 +104,12 @@ object Grants {
         save()
     }
 
+    /** Every chat's "for this chat" grants (Clawdy 安全 → 撤销所有). */
+    @Synchronized
+    fun clearAllSessions() {
+        session.clear()
+    }
+
     @Synchronized
     fun clearSession(sessionId: String) {
         session.removeAll { it.sessionId == sessionId }

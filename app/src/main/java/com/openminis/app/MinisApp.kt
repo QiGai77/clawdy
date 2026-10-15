@@ -658,6 +658,8 @@ class MinisApp : Application(), ImageLoaderFactory {
         }
         // nanoMuse: remembered approvals + the approval gate's background notification.
         io.github.nanomuse.guard.Grants.init(this)
+        com.openminis.app.clawdy.ClawdySecurity.apply(this) // Clawdy: 工作模式 → RiskGate
+        runCatching { com.openminis.app.clawdy.vault.Vault.init(this) } // Clawdy: 密码箱 (labels only until unlocked)
         io.github.nanomuse.feed.FeedFlow.init(this) // nanoMuse
         io.github.nanomuse.chat.RoutineWakes.init(this) // nanoMuse: which chat rows a routine sent
         io.github.nanomuse.avatar.AvatarStore.init(this) // nanoMuse: the user's own face, if any

@@ -9794,12 +9794,21 @@ class ChatViewModel(
             com.openminis.app.tools.TermuxTool.NAME -> run {
                 // Clawdy: Termux commands go through the same delete/send/pay gate as the old sandbox shell.
                 val cmd = runCatching { org.json.JSONObject(argsJson).optString("command", "") }.getOrDefault("")
-                when (val gate = if (cmd.isBlank()) null else io.github.nanomuse.guard.RiskGate.checkShell(activeSessionId, cmd)) {
+                val clip = if (cmd.isNotBlank() && com.openminis.app.clawdy.ClawdySecurity.clipboardConfirm(context) &&
+                    com.openminis.app.clawdy.ClawdySecurity.readsClipboard(cmd)
+                ) io.github.nanomuse.guard.RiskGate.check(
+                    activeSessionId, io.github.nanomuse.guard.GuardKind.SHELL,
+                    io.github.nanomuse.guard.RiskAssessment(io.github.nanomuse.guard.RiskClass.OUTBOUND, "读取剪贴板（内容会发给模型）", "clipboard"),
+                    preview = cmd.trim(),
+                ) else null
+                when (val gate = clip as? io.github.nanomuse.guard.GateOutcome.Denied ?: if (cmd.isBlank()) null else io.github.nanomuse.guard.RiskGate.checkShell(activeSessionId, cmd)) {
                     is io.github.nanomuse.guard.GateOutcome.Denied -> ToolExecutionResult(gate.message, false)
                     else -> com.openminis.app.tools.TermuxTool.execute(argsJson, context)
                 }
             }
             com.openminis.app.clawdy.HandsTool.NAME -> com.openminis.app.clawdy.HandsTool.execute(argsJson, activeSessionId, context)
+            com.openminis.app.clawdy.vault.VaultTools.LIST -> com.openminis.app.clawdy.vault.VaultTools.list(context)
+            com.openminis.app.clawdy.vault.VaultTools.FILL -> com.openminis.app.clawdy.vault.VaultTools.fill(argsJson, activeSessionId, context)
             "memory_write" -> executeMemoryWriteTool(argsJson)
             "memory_get" -> executeMemoryGetTool(argsJson)
             else -> ToolExecutionResult("Unknown tool: $name", false)
@@ -10770,6 +10779,7 @@ Memory system (currently DISABLED):
 Available tools:
 - termux_run: Run a bash script in the user's Termux (full userland; workspace ~/clawdy/<workspace>). The primary way to do real work. If it reports Termux is missing or not authorised, tell the user to finish the setup in 工具连接 and stop.
 - phone_hands: Operate the phone screen (status / apps / run one task / stop) through the accessibility service.
+- vault_list / vault_fill: The user's on-device 密码箱. vault_list gives entry labels and sites only (never values). When a login form is on screen (e.g. after phone_hands stopped at a sign-in page), vault_fill asks the user to approve filling one entry into it; you never see or handle the secret values, so never ask the user to tell you a password.
 - file_read: Read file contents (faster than cat).
 - file_write: Create new files or overwrite existing files (faster than echo/tee).
 - file_edit: Edit existing files with exact string replacement (old_string → new_string). Preferred over file_write for modifications — always file_read first.

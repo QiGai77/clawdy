@@ -123,7 +123,15 @@ object TermuxTool {
             val pending = PendingIntent.getBroadcast(appCtx, requestId, resultIntent, piFlags)
 
             val wsDir = "$TERMUX_HOME/clawdy/$workspace"
-            val script = "mkdir -p '$wsDir' && cd '$wsDir' || exit 97\n$command"
+            // Clawdy: the user's 环境变量 (设置 → 环境变量) are exported for the command; the values go to
+            // Termux in the intent only, never into the model's view of the command, and are masked
+            // in the output when 隐私模式 is on (EnvVarRedactor).
+            val envPrefix = runCatching {
+                (appCtx as? com.openminis.app.MinisApp)?.envVarRepository?.allAsDict().orEmpty()
+                    .filterKeys { k -> Regex("[A-Za-z_][A-Za-z0-9_]*").matches(k) }
+                    .entries.joinToString("") { (k, v) -> "export $k='" + v.replace("'", "'\\''") + "'\n" }
+            }.getOrDefault("")
+            val script = envPrefix + "mkdir -p '$wsDir' && cd '$wsDir' || exit 97\n$command"
             val intent = Intent(ACTION_RUN_COMMAND).apply {
                 setClassName(TERMUX_PACKAGE, RUN_COMMAND_SERVICE)
                 putExtra(EXTRA_PATH, TERMUX_BASH)
@@ -166,7 +174,7 @@ object TermuxTool {
             }
             // err == -1 is Termux's RESULT_CODE_OK
             val ok = exitCode == 0 && (err == -1 || err == 0)
-            return ToolExecutionResult(out, ok, toolTitle = toolTitle)
+            return ToolExecutionResult(com.openminis.app.data.EnvVarRedactor.redactIfEnabled(out).first, ok, toolTitle = toolTitle)
         } finally {
             runCatching { appCtx.unregisterReceiver(receiver) }
         }
