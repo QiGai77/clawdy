@@ -1,6 +1,6 @@
 # HANDOFF：给下一个 AI 的交接说明
 
-> 2026-10-15 写于 Hark。请先读完本文件，再读 `README.md`（完整设计文档，共 20 节）和 `design/shell-progress.md`。
+> 2026-10-15 写于 Hark。请先读完本文件，再读 `docs/DESIGN.md`（完整设计文档，共 20 节）和 `design/shell-progress.md`。
 
 ## 0. 一句话
 **Clawdy** 是装在手机上本地运行的个人 Android Agent，fork 自 [nanoMuse](https://github.com/nano-muse/nanoMuse)（上游 HEAD `a0d727fc04eafa74694a05af8aeac3d793efbafd`），遵循 GPL-3.0-or-later。
