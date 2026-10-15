@@ -29,6 +29,7 @@ object AgentTools {
         memoryEnabled: Boolean = true,
     ): List<AgentToolDefinition> = buildList {
         add(shellExecuteDefinition())
+        add(TermuxTool.definition()) // Clawdy
         add(FileReadTool.definition())
         add(FileWriteTool.definition())
         add(FileEditTool.definition())

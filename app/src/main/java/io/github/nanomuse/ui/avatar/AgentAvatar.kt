@@ -50,10 +50,10 @@ import kotlinx.coroutines.delay
  * to move; a custom face has a picture per mood when the image model could pose it.
  */
 enum class AgentMood(@DrawableRes val drawable: Int, @RawRes val motion: Int?) {
-    IDLE(R.drawable.nm_avatar_idle, R.raw.nm_motion_idle),
-    WORKING(R.drawable.nm_avatar_working, R.raw.nm_motion_working),
-    WAITING(R.drawable.nm_avatar_waiting, R.raw.nm_motion_waiting),
-    HAPPY(R.drawable.nm_avatar_happy, R.raw.nm_motion_happy),
+    IDLE(R.drawable.nm_avatar_idle, null),
+    WORKING(R.drawable.nm_avatar_working, null),
+    WAITING(R.drawable.nm_avatar_waiting, null),
+    HAPPY(R.drawable.nm_avatar_happy, null),
     ERROR(R.drawable.nm_avatar_error, null),
 }
 

@@ -75,7 +75,7 @@ data class SoulMetadata(
         const val DISPLAY_EMOJI = "🐾"
 
         val DEFAULT = SoulMetadata(
-            name = "nanoMuse",
+            name = "Clawdy",
             // Default emoji is intentionally empty — UI uses the fixed
             // [displayEmoji] sparkle and [SoulMDParser.serialize] no longer
             // writes the `emoji:` line. The field is kept on the struct only
@@ -318,7 +318,7 @@ object SoulStore {
      * `SoulStore.defaultContent` byte-for-byte (74c0daf).
      */
     val DEFAULT_CONTENT: String = """---
-name: "nanoMuse"
+name: "Clawdy"
 style: ""
 lang: "auto"
 ---
@@ -453,7 +453,7 @@ object SystemPromptBuilder {
      * Android chat hits this line.
      */
     private const val IDENTITY_TEMPLATE =
-        "You are {name}, a capable AI assistant running on an Android device with a fully functional Linux sandbox (Alpine Linux via PRoot, aarch64). "
+        "You are {name}, a capable, warm and gently playful AI agent running entirely on the user's own Android phone (no cloud computer). You have a lightweight Linux sandbox (Alpine Linux via PRoot, aarch64) via shell_execute, the user's full Termux environment via termux_run (prefer it for documents such as DOCX/PPTX/PDF, web rendering, Playwright/Chromium tests, node/python projects and git), and the phone's apps through the accessibility hands. Ask before any send, payment, deletion or post. "
 
     /**
      * Render the identity sentence (template + name) and optionally
@@ -484,7 +484,7 @@ object SystemPromptBuilder {
         val file = SoulStore.load(context)
         val name = (file?.metadata?.name ?: SoulMetadata.DEFAULT.name)
             .trim()
-            .ifEmpty { "nanoMuse" }
+            .ifEmpty { "Clawdy" }
 
         val style = (file?.metadata?.style ?: "").trim()
 

@@ -9791,6 +9791,7 @@ class ChatViewModel(
             ReadImageTool.NAME -> executeReadImageTool(argsJson)
             "shell_execute" -> executeShellCommand(argsJson, toolId, toolBlocks, assistantId, currentText)
             "browser_use" -> executeBrowserUseTool(argsJson)
+            com.openminis.app.tools.TermuxTool.NAME -> com.openminis.app.tools.TermuxTool.execute(argsJson, context)
             "memory_write" -> executeMemoryWriteTool(argsJson)
             "memory_get" -> executeMemoryGetTool(argsJson)
             else -> ToolExecutionResult("Unknown tool: $name", false)

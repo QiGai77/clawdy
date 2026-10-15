@@ -159,6 +159,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Clawdy: ask once for Termux RUN_COMMAND when Termux is installed.
+        runCatching {
+            if (com.openminis.app.tools.TermuxTool.isTermuxInstalled(this) &&
+                !com.openminis.app.tools.TermuxTool.hasPermission(this)) {
+                requestPermissions(arrayOf(com.openminis.app.tools.TermuxTool.PERMISSION_RUN_COMMAND), 7301)
+            }
+        }
+
         // Register the crash-share "Save to..." launcher BEFORE the
         // safe-mode early-return below — ActivityResultLauncher must be
         // registered before STARTED, and the safe-mode path needs it.

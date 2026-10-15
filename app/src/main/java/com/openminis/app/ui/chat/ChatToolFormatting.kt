@@ -53,9 +53,10 @@ internal fun formatStepDuration(seconds: Long, stillRunning: Boolean): String {
 internal fun toolAccentColor(toolName: String): Color = when (toolName) {
     "shell_execute" -> Color(0xFF34C759)
     "file_read" -> Color(0xFF32ADE6)
-    "file_write" -> Color(0xFF015CFB)
+    "file_write" -> Color(0xFFD9714F)
     "file_edit" -> Color(0xFFFF9500)
-    "browser_use" -> Color(0xFF015CFB)
+    "termux_run" -> Color(0xFF8E7CC3)
+    "browser_use" -> Color(0xFFD9714F)
     "read_image" -> Color(0xFFAF52DE)
     "memory_write", "memory_get" -> Color(0xFFFF2D55)
     "web_search" -> Color(0xFF32ADE6)    // iOS: .cyan for search
@@ -68,6 +69,7 @@ internal fun toolIconFor(toolName: String) = when (toolName) {
     "file_read" -> Icons.Default.Description         // iOS: doc.text
     "file_write" -> Icons.AutoMirrored.Filled.NoteAdd   // iOS: doc.text.fill (filled variant)
     "file_edit" -> Icons.Default.EditNote             // iOS: square.and.pencil
+    "termux_run" -> Icons.Default.Terminal
     "browser_use" -> Icons.Default.Language            // iOS: globe
     "read_image" -> Icons.Default.Image                // iOS: photo
     "memory_write", "memory_get" -> Icons.Default.Psychology // iOS: brain.head.profile
@@ -75,12 +77,13 @@ internal fun toolIconFor(toolName: String) = when (toolName) {
     else -> Icons.Default.Build
 }
 
-// Helper: tool display name for "nanoMuse is using X"
+// Helper: tool display name for "Clawdy is using X"
 internal fun toolDisplayName(toolName: String): String = when (toolName) {
     "shell_execute" -> "terminal"
     "file_read" -> "file reader"
     "file_write" -> "file writer"
     "file_edit" -> "file editor"
+    "termux_run" -> "terminal"
     "browser_use" -> "browser"
     "read_image" -> "image viewer"
     "memory_write" -> "memory"
@@ -94,15 +97,16 @@ internal fun toolDisplayName(toolName: String): String = when (toolName) {
  * Mirrors iOS ToolLiveSheet.toolTitle so the wording matches per tool.
  */
 internal fun toolTitleLabel(toolName: String): String = when (toolName) {
-    "shell_execute" -> "nanoMuse is using Shell"
+    "shell_execute" -> "Clawdy is using Shell"
     "file_read" -> "nanoMuse is reading File"
-    "file_write" -> "nanoMuse is using Editor"
+    "file_write" -> "Clawdy is using Editor"
     "file_edit" -> "nanoMuse is editing File"
-    "browser_use" -> "nanoMuse is using Browser"
+    "termux_run" -> "Clawdy is using Termux"
+    "browser_use" -> "Clawdy is using Browser"
     "read_image" -> "nanoMuse is reading Image"
-    "memory_write", "memory_get" -> "nanoMuse is using Memory"
-    "web_search" -> "nanoMuse is using Search"
-    else -> "nanoMuse is using ${toolDisplayName(toolName)}"
+    "memory_write", "memory_get" -> "Clawdy is using Memory"
+    "web_search" -> "Clawdy is using Search"
+    else -> "Clawdy is using ${toolDisplayName(toolName)}"
 }
 
 // nanoMuse: the same label once the step is over (issue #67 — the sheet's bottom bar
@@ -111,15 +115,16 @@ internal fun toolTitleLabel(toolName: String): String = when (toolName) {
 internal fun toolTitleLabel(toolName: String, status: ToolBlockStatus?): String = when (status) {
     null, ToolBlockStatus.RUNNING, ToolBlockStatus.STREAMING, ToolBlockStatus.PENDING -> toolTitleLabel(toolName)
     ToolBlockStatus.SUCCESS -> when (toolName) {
-        "shell_execute" -> "nanoMuse used Shell"
+        "shell_execute" -> "Clawdy used Shell"
         "file_read" -> "nanoMuse read File"
-        "file_write" -> "nanoMuse used Editor"
+        "file_write" -> "Clawdy used Editor"
         "file_edit" -> "nanoMuse edited File"
-        "browser_use" -> "nanoMuse used Browser"
+        "termux_run" -> "Clawdy used Termux"
+        "browser_use" -> "Clawdy used Browser"
         "read_image" -> "nanoMuse read Image"
-        "memory_write", "memory_get" -> "nanoMuse used Memory"
-        "web_search" -> "nanoMuse used Search"
-        else -> "nanoMuse used ${toolDisplayName(toolName)}"
+        "memory_write", "memory_get" -> "Clawdy used Memory"
+        "web_search" -> "Clawdy used Search"
+        else -> "Clawdy used ${toolDisplayName(toolName)}"
     }
     ToolBlockStatus.FAILED -> "${toolDisplayName(toolName).replaceFirstChar { it.uppercase() }} failed"
     ToolBlockStatus.CANCELLED -> "${toolDisplayName(toolName).replaceFirstChar { it.uppercase() }} stopped"

@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Clawdy: Termux RUN_COMMAND bridge -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
     <!-- T33: Check Update — needed to launch the system installer for the
          downloaded APK. The user must additionally grant "install unknown
          apps" for this package the first time they upgrade. -->
@@ -117,6 +119,7 @@
     <!-- Package visibility for speech recognition services + Custom Tabs
          (Android 11+ scoped queries). -->
     <queries>
+        <package android:name="com.termux" />
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>

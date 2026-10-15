@@ -983,7 +983,7 @@ class AgentForegroundService : Service() {
      * so the user still gets a hint about what's running.
      */
     private fun toolDisplayLabel(toolName: String): String = when (toolName) {
-        "shell_execute" -> "nanoMuse is using Shell"
+        "shell_execute" -> "Clawdy is using Shell"
         "file_read" -> "nanoMuse is reading File"
         "file_write" -> "nanoMuse is using Editor"
         "file_edit" -> "nanoMuse is editing File"

@@ -115,7 +115,7 @@ fun CheckUpdateSection() {
     ) {
         SettingsRow(
             icon = Icons.Outlined.SystemUpdate,
-            iconColor = Color(0xFF015CFB),
+            iconColor = Color(0xFFD9714F),
             title = stringResource(
                 if (checking) R.string.check_update_checking
                 else R.string.check_update_check_button
