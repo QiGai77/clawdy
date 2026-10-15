@@ -9791,7 +9791,14 @@ class ChatViewModel(
             ReadImageTool.NAME -> executeReadImageTool(argsJson)
             "shell_execute" -> executeShellCommand(argsJson, toolId, toolBlocks, assistantId, currentText)
             "browser_use" -> executeBrowserUseTool(argsJson)
-            com.openminis.app.tools.TermuxTool.NAME -> com.openminis.app.tools.TermuxTool.execute(argsJson, context)
+            com.openminis.app.tools.TermuxTool.NAME -> run {
+                // Clawdy: Termux commands go through the same delete/send/pay gate as the old sandbox shell.
+                val cmd = runCatching { org.json.JSONObject(argsJson).optString("command", "") }.getOrDefault("")
+                when (val gate = if (cmd.isBlank()) null else io.github.nanomuse.guard.RiskGate.checkShell(activeSessionId, cmd)) {
+                    is io.github.nanomuse.guard.GateOutcome.Denied -> ToolExecutionResult(gate.message, false)
+                    else -> com.openminis.app.tools.TermuxTool.execute(argsJson, context)
+                }
+            }
             com.openminis.app.clawdy.HandsTool.NAME -> com.openminis.app.clawdy.HandsTool.execute(argsJson, activeSessionId, context)
             "memory_write" -> executeMemoryWriteTool(argsJson)
             "memory_get" -> executeMemoryGetTool(argsJson)

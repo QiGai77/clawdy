@@ -172,8 +172,8 @@ fun ClawdyShell(
             }
         },
     ) {
+        // Same store + default key as ChatScreen, so one session never gets two ViewModels.
         val vm: ChatViewModel = viewModel(
-            key = "clawdy_$sessionId",
             viewModelStoreOwner = ChatViewModelStore.ownerFor(sessionId),
             factory = ChatViewModel.factory(
                 sessionId = sessionId,
@@ -185,6 +185,7 @@ fun ClawdyShell(
                 mcpRepository = mcpRepository,
             ),
         )
+        DisposableEffect(vm) { onDispose { vm.cleanupIfEmptyOnExit() } }
         ClawdyConversation(
             vm = vm,
             sessionId = sessionId,
