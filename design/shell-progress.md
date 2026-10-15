@@ -16,3 +16,32 @@
 
 ### Placeholders / not done
 See the report returned to the dispatching agent (also summarised in the final commit messages).
+
+## 2026-10-15 (v0.2.0) — settings rework from the user's device annotations
+
+### Build host (from scratch, aarch64, 7 GB)
+- `tools/setup-host-aarch64.sh` now also fetches cmdline-tools 11076708, imports the Hark gateway CA
+  (`/opt/certs/gateway-ca.crt`) into the JDK trust store (Gradle failed with PKIX otherwise), and copies
+  `tools/fwdproxy.py` (local unauthenticated forwarder → the authenticated egress proxy) and the
+  `tools/aapt2` qemu wrapper into `/workspace/tools`.
+- Clean `assembleDebug` 12m42s; `compileDebugKotlin` alone ≈5 min.
+
+### Settings (ui/clawdy)
+- Top level: profile row (no subtitle) · 模型/配置 · 安全/安全 · 对话 (对话与上下文, 记忆, 技能, 定时任务) ·
+  工具 (工具连接, Hands 设置, 环境变量, 运行日志) · 系统 (网络代理, 通知与后台, 备份与恢复*) · 外观 (主题) ·
+  关于 (版本, 开源许可, 反馈问题). The legacy-settings row is gone. *备份与恢复 still opens the upstream screen.
+- 模型配置: add provider, default model (single-member group "默认模型" set as default), keys → key detail
+  (label, base URL, key replace, enable, Responses API, refresh /models, add model id, delete) → model detail
+  (ModelOverrides: name, context, max output, reasoning, vision, hidden, max thinking level), groups → group
+  detail (members + order, fallback/loadBalance, fallback trigger, context cap, default, delete).
+- 安全: work mode cards; 密码箱; 截图上传 / 不在密码框上操作 / 读取剪贴板前确认 / 敏感应用; remembered grants
+  with per-item revoke + revoke all.
+
+### Wiring
+- `RiskGate.mode: GateMode` (CAUTIOUS / STANDARD / RELAXED), set by `ClawdySecurity.apply` at startup and on change.
+- Hands text mode (`ScreenText`) when screenshots are off; `Hands.textModel` lets any chat model drive it;
+  `readiness` no longer requires Android 11 / a vision model in text mode.
+- Hands: sensitive-app stop per step and on open_app; password-field guard follows the setting.
+- `termux_run`: clipboard-read approval; env vars exported; output redacted by `EnvVarRedactor`.
+- Approval sheet: real data preview (`dataPreview`), mode-aware remember checkbox, class-aware button label.
+- Vault: `clawdy/vault/Vault.kt`, `VaultTools.kt`; sheet `VaultFillSheet` mounted once in `AppNavigation`.
