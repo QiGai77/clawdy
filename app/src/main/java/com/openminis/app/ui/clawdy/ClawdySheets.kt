@@ -157,9 +157,12 @@ fun ApprovalSheet(request: RiskRequest, onEditRequest: (String) -> Unit) {
     val c = Clawdy.colors
     val ctx = LocalContext.current
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var rememberChoice by remember(request.id) { mutableStateOf(ClawdyPrefs.int(ctx, ClawdyPrefs.KEY_CONFIRM_SENSITIVE, 0) == 1 && request.canSession) }
+    val gateMode = io.github.nanomuse.guard.RiskGate.mode
+    // 标准: remembering for this chat is pre-checked; 放手 remembers by itself (RiskGate); 谨慎 never offers it.
+    var rememberChoice by remember(request.id) { mutableStateOf(gateMode == io.github.nanomuse.guard.GateMode.STANDARD && request.canSession) }
     val name = NanoMuseIdentity.name(ctx)
-    val title = runCatching { RiskText.title(ctx, request, name) }.getOrDefault("确认这一步操作")
+    val title = if (request.assessment.riskClass == RiskClass.INSTALL) "$name 想安装软件"
+        else runCatching { RiskText.title(ctx, request, name) }.getOrDefault("确认这一步操作")
     val money = request.assessment.riskClass == RiskClass.MONEY
     val shake = rememberInfiniteTransition(label = "shake")
     val angle by shake.animateFloat(
@@ -200,11 +203,11 @@ fun ApprovalSheet(request: RiskRequest, onEditRequest: (String) -> Unit) {
             Text(
                 buildString {
                     if (reason.isNotBlank()) append("原因：").append(reason).append("\n")
-                    append(if (ClawdyPrefs.bool(ctx, ClawdyPrefs.KEY_SCREENSHOT_UPLOAD, false)) "本步可能会把屏幕截图发给模型" else "本步只把屏幕文字发给模型，不上传截图")
+                    append(dataPreview(ctx, request))
                 },
                 color = c.text2, style = serif(12.sp, line = 18.sp), modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 2.dp),
             )
-            if (request.canSession) {
+            if (request.canSession && gateMode == io.github.nanomuse.guard.GateMode.STANDARD) {
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { rememberChoice = !rememberChoice },
                     verticalAlignment = Alignment.CenterVertically,
@@ -217,9 +220,17 @@ fun ApprovalSheet(request: RiskRequest, onEditRequest: (String) -> Unit) {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 ClawdyButton("取消", { RiskGate.decide(request.id, RiskDecision.DENY) }, Modifier.weight(1f), kind = ButtonKind.SECONDARY)
-                ClawdyButton("确认发送", {
+                ClawdyButton(when (request.assessment.riskClass) {
+                    RiskClass.MONEY -> "确认付款"
+                    RiskClass.DESTRUCTIVE -> "确认删除"
+                    RiskClass.OUTBOUND -> "确认发送"
+                    else -> "允许"
+                }, {
                     RiskGate.decide(request.id, if (rememberChoice && request.canSession) RiskDecision.ALLOW_SESSION else RiskDecision.ALLOW_ONCE)
                 }, Modifier.weight(1f))
+            }
+            if (gateMode == io.github.nanomuse.guard.GateMode.RELAXED && request.canSession) {
+                Text("放手模式：同意后，本对话内同类操作不再询问", color = c.text2, style = serif(12.sp), modifier = Modifier.padding(top = 10.dp))
             }
             Text("密码、验证码和支付密码只能由你亲手输入", color = c.text2, style = serif(12.sp), modifier = Modifier.padding(top = 14.dp))
         }
@@ -394,5 +405,43 @@ fun AttachSheet(vm: ChatViewModel, onDismiss: () -> Unit, onWorkspace: () -> Uni
             },
             dismissButton = { ClawdyButton("取消", { linkDialog = false }, kind = ButtonKind.GHOST, height = 40.dp) },
         )
+    }
+}
+
+
+/**
+ * 「将发送的数据」: what this step actually sends, counted from the request itself — the command's
+ * size, the hosts it reaches, the files it attaches — and what the model sees of the screen.
+ */
+fun dataPreview(ctx: android.content.Context, r: io.github.nanomuse.guard.RiskRequest): String {
+    val shots = com.openminis.app.clawdy.ClawdySecurity.screenshotUpload(ctx)
+    return when (r.kind) {
+        io.github.nanomuse.guard.GuardKind.SHELL, io.github.nanomuse.guard.GuardKind.COMPUTER -> {
+            val cmd = r.preview
+            val bytes = cmd.toByteArray().size
+            val lines = cmd.lines().count { it.isNotBlank() }
+            val hosts = (Regex("""https?://([A-Za-z0-9.\-]+)""").findAll(cmd).map { it.groupValues[1] } +
+                Regex("""\b[\w.\-]+@([A-Za-z0-9.\-]+\.[A-Za-z]{2,})(?::|\s)""").findAll(cmd).map { it.groupValues[1] })
+                .distinct().take(4).toList()
+            val files = (Regex("""@([^\s'";|&]+)""").findAll(cmd).map { it.groupValues[1] }.filter { '/' in it || '.' in it } +
+                Regex("""(?:-T|--upload-file|-F\s*\S+=@?)\s*([^\s'";|&]+)""").findAll(cmd).map { it.groupValues[1] })
+                .map { it.substringAfterLast('/') }.filter { it.isNotBlank() && !it.contains('@') }.distinct().take(4).toList()
+            buildString {
+                append("将发送的数据：命令 ").append(lines).append(" 行 · ").append(bytes).append(" 字节")
+                if (hosts.isNotEmpty()) append(" · 目标 ").append(hosts.joinToString("、"))
+                if (files.isNotEmpty()) append(" · 附带文件 ").append(files.joinToString("、"))
+                if (r.assessment.target != null && hosts.isEmpty()) append(" · 对象 ").append(io.github.nanomuse.guard.RiskText.plainTarget(r.assessment.target))
+            }
+        }
+        io.github.nanomuse.guard.GuardKind.SCREEN -> buildString {
+            append("将在「").append(r.pageUrl ?: "当前应用").append("」里点「").append((r.elementText ?: "").take(30)).append("」")
+            append(if (shots) " · Hands 看的是截图" else " · Hands 只看屏幕文字，不上传截图")
+        }
+        io.github.nanomuse.guard.GuardKind.BROWSER -> buildString {
+            append("将在网页 ")
+            append(runCatching { android.net.Uri.parse(r.pageUrl).host }.getOrNull() ?: r.pageUrl ?: "当前页面")
+            r.elementText?.takeIf { it.isNotBlank() }?.let { append(" 点「").append(it.take(30)).append("」") }
+        }
+        else -> "来自其他设备的请求：" + (r.pageUrl ?: "未知设备")
     }
 }

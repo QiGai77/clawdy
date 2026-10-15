@@ -525,6 +525,9 @@ fun AppNavigation(
         quickActionStart != null -> quickActionStart
         else -> Routes.SESSION_LIST
     }
+    // Clawdy: a 密码箱 fill the agent asked for, answered wherever the user is in the app.
+    val clawdyVaultFill by com.openminis.app.clawdy.vault.VaultFillGate.pending.collectAsState()
+    clawdyVaultFill?.let { com.openminis.app.ui.clawdy.VaultFillSheet(it) }
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -645,22 +648,102 @@ fun AppNavigation(
         composable(com.openminis.app.ui.clawdy.ClawdyRoutes.SETTINGS) {
             com.openminis.app.ui.clawdy.SettingsScreen(
                 onBack = { navController.safePopBackStack() },
+                providerRepository = providerRepository,
                 nav = com.openminis.app.ui.clawdy.SettingsNav(
                     persona = { navController.safeNavigate(Routes.SOUL) },
-                    providers = { navController.safeNavigate(Routes.PROVIDER_LIST) },
-                    addProvider = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.PROVIDER_ADD) },
-                    defaultModel = { navController.safeNavigate(Routes.MODEL_GROUPS) },
+                    models = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.MODELS) },
+                    security = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.SECURITY) },
                     tools = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.TOOLS) },
+                    hands = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.HANDS) },
                     logs = { navController.safeNavigate(Routes.LOGS) },
-                    legacy = { navController.safeNavigate(Routes.SETTINGS) },
-                    licenses = { navController.safeNavigate("clawdy/licenses") },
+                    chatPrefs = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.CHAT_PREFS) },
+                    memory = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.MEMORY) },
+                    skills = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.SKILLS) },
+                    scheduled = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.SCHEDULED) },
+                    env = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.ENV) },
+                    network = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.NETWORK) },
+                    background = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.BACKGROUND) },
+                    backup = { navController.safeNavigate(Routes.BACKUP) },
+                    licenses = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.LICENSES) },
                 ),
             )
         }
-        composable("clawdy/licenses") {
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.LICENSES) {
             com.openminis.app.ui.clawdy.LicensesScreen(
                 onBack = { navController.safePopBackStack() },
                 onUpstreamAbout = { navController.safeNavigate(Routes.ABOUT) },
+            )
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.MODELS) {
+            com.openminis.app.ui.clawdy.ModelConfigScreen(
+                providerRepository = providerRepository,
+                onBack = { navController.safePopBackStack() },
+                onAddProvider = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.PROVIDER_ADD) },
+                onKey = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.key(it)) },
+                onGroups = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.GROUPS) },
+            )
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.KEY, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+            com.openminis.app.ui.clawdy.KeyDetailScreen(providerRepository, e.arguments?.getString("id").orEmpty(),
+                onBack = { navController.safePopBackStack() }, onEntry = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.entry(it)) })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.ENTRY, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+            com.openminis.app.ui.clawdy.ModelEntryScreen(providerRepository, e.arguments?.getString("id").orEmpty(), onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.GROUPS) {
+            com.openminis.app.ui.clawdy.GroupsScreen(providerRepository, onBack = { navController.safePopBackStack() }, onGroup = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.group(it)) })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.GROUP, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+            com.openminis.app.ui.clawdy.GroupDetailScreen(providerRepository, e.arguments?.getString("id").orEmpty(), onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.SECURITY) {
+            com.openminis.app.ui.clawdy.SecurityScreen(
+                onBack = { navController.safePopBackStack() },
+                onVault = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.VAULT) },
+                onSensitiveApps = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.SENSITIVE_APPS) },
+            )
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.VAULT) {
+            com.openminis.app.ui.clawdy.VaultScreen(onBack = { navController.safePopBackStack() }, onEdit = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.vaultEdit(it)) })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.VAULT_EDIT, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+            com.openminis.app.ui.clawdy.VaultEditScreen(e.arguments?.getString("id").orEmpty(), onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.SENSITIVE_APPS) {
+            com.openminis.app.ui.clawdy.SensitiveAppsScreen(onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.CHAT_PREFS) {
+            com.openminis.app.ui.clawdy.ChatPrefsScreen(onBack = { navController.safePopBackStack() }, onMemory = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.MEMORY) })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.MEMORY) {
+            com.openminis.app.ui.clawdy.MemoryScreen(memoryRepository, onBack = { navController.safePopBackStack() }, onFile = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.memoryFile(it)) })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.MEMORY_FILE, arguments = listOf(navArgument("name") { type = NavType.StringType })) { e ->
+            com.openminis.app.ui.clawdy.MemoryFileScreen(memoryRepository, e.arguments?.getString("name").orEmpty(), onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.SKILLS) {
+            com.openminis.app.ui.clawdy.SkillsScreen(skillRepository, onBack = { navController.safePopBackStack() }, onSkill = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.skill(it)) })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.SKILL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
+            com.openminis.app.ui.clawdy.SkillScreen(skillRepository, e.arguments?.getString("id").orEmpty(), onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.ENV) {
+            com.openminis.app.ui.clawdy.EnvVarsScreen(envVarRepository, onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.NETWORK) {
+            com.openminis.app.ui.clawdy.NetworkProxyScreen(onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.BACKGROUND) {
+            com.openminis.app.ui.clawdy.BackgroundScreen(onBack = { navController.safePopBackStack() })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.HANDS) {
+            com.openminis.app.ui.clawdy.HandsSettingsScreen(providerRepository, onBack = { navController.safePopBackStack() }, onSecurity = { navController.safeNavigate(com.openminis.app.ui.clawdy.ClawdyRoutes.SECURITY) })
+        }
+        composable(com.openminis.app.ui.clawdy.ClawdyRoutes.SCHEDULED) {
+            com.openminis.app.ui.clawdy.ScheduledScreen(
+                onBack = { navController.safePopBackStack() },
+                onEdit = { id -> navController.safeNavigate(Routes.scheduledTaskEdit(id)) },
+                onRuns = { id -> navController.safeNavigate(Routes.scheduledTaskRuns(id)) },
             )
         }
 

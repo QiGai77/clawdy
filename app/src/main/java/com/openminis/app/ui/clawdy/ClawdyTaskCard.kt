@@ -68,6 +68,7 @@ fun toolIcon(step: Step): ImageVector = when {
         "file_read", "file_write", "file_edit" -> ClawdyIcons.File
         "read_image" -> ClawdyIcons.Image
         "memory_write", "memory_get" -> ClawdyIcons.Memory
+        "vault_list", "vault_fill" -> ClawdyIcons.Key
         else -> ClawdyIcons.Wrench
     }
 }

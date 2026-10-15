@@ -117,6 +117,8 @@ object Turns {
     fun toolLabel(name: String): String = when (name) {
         "termux_run" -> "Termux"
         "phone_hands" -> "Hands"
+        "vault_list" -> "密码箱"
+        "vault_fill" -> "密码箱代填"
         "shell_execute" -> "沙箱"
         "browser_use" -> "联网"
         "file_read" -> "读取文件"

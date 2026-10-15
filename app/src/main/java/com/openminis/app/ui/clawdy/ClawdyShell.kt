@@ -110,6 +110,31 @@ object ClawdyRoutes {
     const val ONBOARDING = "clawdy/onboarding"
     const val PERSONA = "clawdy/persona"
     const val SECURITY = "clawdy/security"
+    const val MODELS = "clawdy/models"
+    const val KEY = "clawdy/key/{id}"
+    fun key(id: String) = "clawdy/key/$id"
+    const val ENTRY = "clawdy/entry/{id}"
+    fun entry(id: String) = "clawdy/entry/$id"
+    const val GROUPS = "clawdy/groups"
+    const val GROUP = "clawdy/group/{id}"
+    fun group(id: String) = "clawdy/group/$id"
+    const val VAULT = "clawdy/vault"
+    const val VAULT_EDIT = "clawdy/vault_edit/{id}"
+    fun vaultEdit(id: String) = "clawdy/vault_edit/$id"
+    const val SENSITIVE_APPS = "clawdy/sensitive_apps"
+    const val CHAT_PREFS = "clawdy/chat_prefs"
+    const val MEMORY = "clawdy/memory"
+    const val MEMORY_FILE = "clawdy/memory_file/{name}"
+    fun memoryFile(name: String) = "clawdy/memory_file/" + android.net.Uri.encode(name)
+    const val SKILLS = "clawdy/skills"
+    const val SKILL = "clawdy/skill/{id}"
+    fun skill(id: String) = "clawdy/skill/$id"
+    const val ENV = "clawdy/env"
+    const val NETWORK = "clawdy/network"
+    const val BACKGROUND = "clawdy/background"
+    const val HANDS = "clawdy/hands"
+    const val SCHEDULED = "clawdy/scheduled"
+    const val LICENSES = "clawdy/licenses"
 }
 
 private fun newDraft() = "__new__${UUID.randomUUID()}"
@@ -579,8 +604,8 @@ private fun ClawdyDrawer(
         Spacer(Modifier.height(12.dp))
         DrawerEntry(ClawdyIcons.Plus, "新对话", onNewChat, highlight = true)
         DrawerEntry(ClawdyIcons.Folder, "工作区文件", { onNavigate(ClawdyRoutes.WORKSPACE) })
-        DrawerEntry(ClawdyIcons.Clock, "定时任务", { onNavigate(Routes.SCHEDULED_TASKS) })
-        DrawerEntry(ClawdyIcons.Memory, "记忆", { onNavigate(Routes.MEMORY) })
+        DrawerEntry(ClawdyIcons.Clock, "定时任务", { onNavigate(ClawdyRoutes.SCHEDULED) })
+        DrawerEntry(ClawdyIcons.Memory, "记忆", { onNavigate(ClawdyRoutes.MEMORY) })
         Text("最近", color = c.text2, style = serif(12.sp, FontWeight.Medium), modifier = Modifier.padding(start = 12.dp, top = 16.dp, bottom = 6.dp))
         LazyColumn(Modifier.weight(1f)) {
             items(shown, key = { it.id }) { s ->

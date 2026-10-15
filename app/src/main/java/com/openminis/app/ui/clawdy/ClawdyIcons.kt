@@ -168,4 +168,33 @@ object ClawdyIcons {
         icon("box", "M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z",
             "M3.3 7L12 12l8.7-5", "M12 22V12")
     }
+    val Lock by lazy {
+        icon("lock", "M6 11h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z", "M8 11V7a4 4 0 0 1 8 0v4")
+    }
+    val Card by lazy {
+        icon("card", "M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M2 10h20", "M6 15h4")
+    }
+    val MapPin by lazy {
+        icon("map_pin", "M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0z", "M12 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6z")
+    }
+    val Grid by lazy {
+        icon("grid", "M4 4h6v6H4z", "M14 4h6v6h-6z", "M4 14h6v6H4z", "M14 14h6v6h-6z")
+    }
+    val Sliders by lazy {
+        icon("sliders", "M4 21v-7", "M4 10V3", "M12 21v-9", "M12 8V3", "M20 21v-5", "M20 12V3", "M2 14h4", "M10 8h4", "M18 16h4")
+    }
+    val Puzzle by lazy {
+        icon("puzzle", "M19.4 14.5a2.5 2.5 0 1 0 0-5H18V6a2 2 0 0 0-2-2h-3.5v1.4a2.5 2.5 0 1 1-5 0V4H6a2 2 0 0 0-2 2v3.5h1.4a2.5 2.5 0 1 1 0 5H4V18a2 2 0 0 0 2 2h3.5v-1.4a2.5 2.5 0 1 1 5 0V20H16a2 2 0 0 0 2-2v-3.5z")
+    }
+    val Plug by lazy {
+        icon("plug", "M12 22v-5", "M9 8V2", "M15 8V2", "M18 8v5a6 6 0 0 1-12 0V8z")
+    }
+    val Variable by lazy {
+        icon("variable", "M8 21s-4-3-4-9 4-9 4-9", "M16 3s4 3 4 9-4 9-4 9", "M15 9l-6 6", "M9 9l6 6")
+    }
+    val Chart by lazy { icon("chart", "M3 3v18h18", "M8 17v-5", "M13 17V8", "M18 17v-3") }
+    val Clipboard by lazy {
+        icon("clipboard", "M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1z", "M16 5h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2")
+    }
+    val Ban by lazy { icon("ban", CIRCLE_9, "M5.6 5.6l12.8 12.8") }
 }
