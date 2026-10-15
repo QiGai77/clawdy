@@ -34,6 +34,9 @@ object AgentTools {
         add(com.openminis.app.clawdy.HandsTool.definition())
         add(com.openminis.app.clawdy.vault.VaultTools.listDefinition())
         add(com.openminis.app.clawdy.vault.VaultTools.fillDefinition())
+        // Clawdy 0.3.0: native MCP client (连接器)
+        add(com.openminis.app.clawdy.mcp.McpManager.toolsDefinition())
+        add(com.openminis.app.clawdy.mcp.McpManager.callDefinition())
         add(FileReadTool.definition())
         add(FileWriteTool.definition())
         add(FileEditTool.definition())
@@ -119,14 +122,12 @@ object AgentTools {
     // Aligned with iOS AIChatViewModel.swift:5059-5067
     private fun memoryWriteDefinition(): AgentToolDefinition = AgentToolDefinition(
         name = "memory_write",
-        description = "Write a memory entry to today's daily log (YYYY-MM-DD.md). Memories persist across all sessions. " +
-            "Each entry is prepended with a timestamp. " +
-            "Save: user preferences, recurring patterns, key facts, project conventions, reusable knowledge. " +
-            "Avoid saving passwords, API keys, tokens, or secrets unless the user explicitly confirms after being warned. " +
-            "Keep entries concise and general-purpose. GLOBAL.md is read-only (user-maintained via Settings).",
+        description = "Add one durable fact about the user to MEMORY.md (the single memory file, injected into every conversation; it is also updated automatically after each conversation). " +
+            "Use it when the user asks you to remember something. One short line per fact, e.g. '喜欢喝无糖拿铁'. " +
+            "Never save passwords, verification codes, API keys, tokens, card or ID numbers, or anything from the 密码箱 — such entries are rejected.",
         parameters = mapOf(
             "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user (e.g. 'Save user preference for Python', 'Note today's project context'). Use the same language as the user."),
-            "content" to AgentToolParam("string", "The memory content to write. Use concise Markdown with a short heading (## Topic) and context about what was done/learned."),
+            "content" to AgentToolParam("string", "The fact to remember, one short line (or a few lines) in the user's language."),
         ),
         required = listOf("tool_title", "content"),
         propertyOrdering = listOf("tool_title", "content"),
@@ -139,7 +140,7 @@ object AgentTools {
             "Returns matching lines with surrounding context. Use this to recall previous knowledge, user preferences, or past notes.",
         parameters = mapOf(
             "tool_title" to AgentToolParam("string", "A concise 5-10 word summary of what this tool call does, shown to the user (e.g. 'Recall user preferences', 'Search past notes'). Use the same language as the user."),
-            "scope" to AgentToolParam("string", "Memory scope to search: 'daily' for daily logs only, 'all' for daily logs + GLOBAL.md.", enumValues = listOf("daily", "all")),
+            "scope" to AgentToolParam("string", "Kept for compatibility; MEMORY.md is always searched.", enumValues = listOf("daily", "all")),
             "keywords" to AgentToolParam("string", "Space-separated keywords for fuzzy matching (e.g. 'python preference' or 'API key setup'). All keywords must appear in a line or its surrounding context for a match. Leave empty to return full memory files."),
         ),
         required = listOf("tool_title"),

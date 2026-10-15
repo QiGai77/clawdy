@@ -6833,6 +6833,14 @@ class ChatViewModel(
 
     private fun nmAfterTurn() {
         val sid = realSessionId.ifEmpty { sessionId }
+        // Clawdy 0.3.0: fold what this conversation taught about the user into MEMORY.md (debounced, background).
+        runCatching {
+            com.openminis.app.clawdy.memory.ClawdyMemory.afterTurn(
+                context, sid, currentProvider,
+                _messages.value.filter { (it.role == "user" || it.role == "assistant") && it.content.isNotBlank() && !it.isStreaming }
+                    .map { it.role to it.content },
+            )
+        }
         // Goal blocks in the reply just finished, and the turn budget of any
         // prompt addendum, are settled first — they apply to every session.
         io.github.nanomuse.chat.SessionAddenda.onTurnFinished(sid)
@@ -9809,6 +9817,8 @@ class ChatViewModel(
             com.openminis.app.clawdy.HandsTool.NAME -> com.openminis.app.clawdy.HandsTool.execute(argsJson, activeSessionId, context)
             com.openminis.app.clawdy.vault.VaultTools.LIST -> com.openminis.app.clawdy.vault.VaultTools.list(context)
             com.openminis.app.clawdy.vault.VaultTools.FILL -> com.openminis.app.clawdy.vault.VaultTools.fill(argsJson, activeSessionId, context)
+            com.openminis.app.clawdy.mcp.McpManager.TOOLS -> com.openminis.app.clawdy.mcp.McpManager.executeTools(argsJson, context)
+            com.openminis.app.clawdy.mcp.McpManager.CALL -> com.openminis.app.clawdy.mcp.McpManager.executeCall(argsJson, activeSessionId, context)
             "memory_write" -> executeMemoryWriteTool(argsJson)
             "memory_get" -> executeMemoryGetTool(argsJson)
             else -> ToolExecutionResult("Unknown tool: $name", false)
@@ -10745,8 +10755,8 @@ class ChatViewModel(
         val memoryOn = _memoryEnabled.value
         val toolListMemoryBullets = if (memoryOn) {
             """
-- memory_write: Save a memory entry to today's daily log (YYYY-MM-DD.md). Use proactively to note user preferences, project patterns, and important context.
-- memory_get: Recall memories with keyword search. Check memory at the start of new topics to leverage past knowledge."""
+- memory_write: Add one durable fact about the user to MEMORY.md (under 随手记). MEMORY.md is also updated automatically after each conversation, so use this only when the user asks you to remember something.
+- memory_get: Search MEMORY.md (and archived older memory) by keyword."""
         } else {
             // Empty — no memory_write / memory_get bullets when disabled.
             // The "Memory system:" section below also collapses, so the
@@ -10758,14 +10768,9 @@ class ChatViewModel(
             """
 
 Memory system (currently ENABLED):
-- memory_write writes to today's daily log (YYYY-MM-DD.md) — use it for session notes, key facts, project context, things learned, and action items.
-- GLOBAL.md (/var/minis/memory/GLOBAL.md) stores persistent preferences, settings, and general-purpose conventions. To read it, use file_read (NOT memory_get). To update it, use file_read first then file_edit. If GLOBAL.md does not exist yet, use file_write to create it directly.
-- IMPORTANT: Only write to GLOBAL.md when the user explicitly asks (e.g. 'remember this globally', 'save to global memory'). Before editing, deduplicate and clean up — avoid ambiguity, repetition, or daily-log-style entries. GLOBAL.md should contain only concise, reusable knowledge (preferences, settings, conventions), NOT session logs or transient context.
-- Use memory_get to recall past knowledge before starting tasks — check if there are relevant memories that can help.
-- Proactively save memories (via memory_write to daily log) when you discover user preferences or important patterns — don't wait to be asked.
-- When the user says 'remember this' or similar, use memory_write to persist to the daily log. Only write to GLOBAL.md if the user specifically asks for global/persistent storage.
-- What NOT to remember: passwords, API keys, tokens, secrets, or any sensitive credentials. Warn the user about the risk first; only proceed if they explicitly confirm.
-- Keep memories concise, factual, and general-purpose — avoid noise that won't be useful later."""
+- MEMORY.md (shown below) is the single memory file: the user's profile, habits, preferences, hobbies, people and ongoing work. Clawdy updates it automatically in the background after each conversation; the user views and edits it on the 人设 page (设置 → 头像行).
+- When the user says "remember this" / 记住, call memory_write with the fact; when they ask to forget something, tell them to remove it on the 人设 page (or edit the file with file_edit at /var/minis/memory/MEMORY.md if they ask you to).
+- Never store passwords, codes, keys, card or ID numbers, or anything from the 密码箱 in memory."""
         } else {
             """
 
@@ -10906,7 +10911,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
                 "dailyChars=${dailyMemoryFragment?.length ?: 0}",
         )
 
-        return buildString {
+        return com.openminis.app.clawdy.ClawdyPersona.finalizePrompt(buildString {
             append(base)
             if (skillFragment != null) {
                 append("\n\n")
@@ -10924,7 +10929,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
                 append("\n\n")
                 append(dailyMemoryFragment)
             }
-            // nanoMuse: USER.md — what the agent knows about the person, kept as a file they can edit.
+            // Clawdy 0.3.0: USER.md was merged into MEMORY.md (ClawdyMemory.migrate); only a file the user re-created still shows.
             io.github.nanomuse.sysfiles.UserFile.promptFragment(context)?.let { append("\n\n").append(it) }
             // Runtime context goes last so the prefix above stays byte-stable
             // across requests within the same day. Keep ordering deterministic
@@ -10955,7 +10960,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
             // nanoMuse: the feed's conversation carries the user's feed preferences and the post protocol.
             io.github.nanomuse.feed.FeedFlow.systemAddendum(context, realSessionId.ifEmpty { sessionId })
                 ?.let { append("\n\n").append(it) }
-        }
+        })
     }
 
     // ─── Legacy tool execution methods (kept for compatibility) ───────────

@@ -488,8 +488,10 @@ object SystemPromptBuilder {
 
         val style = (file?.metadata?.style ?: "").trim()
 
-        val identity = IDENTITY_TEMPLATE.replace("{name}", name)
+        val identity = IDENTITY_TEMPLATE.replace("{name}", name) +
+            com.openminis.app.clawdy.ClawdyPersona.IDENTITY_FENCE.replace("{name}", name)
         val identityTrimmed = identity.trimEnd()
+        val clawdyStyle = com.openminis.app.clawdy.ClawdyPersona.stylePrompt(context)
 
         // [T-soul-hint] Fixed hint telling the model how SOUL fields can be
         // changed. Always appended (with or without a personality body) so
@@ -500,7 +502,7 @@ object SystemPromptBuilder {
             "---\n" +
             "SOUL.md fields (name / icon / style / lang / body) can be edited two ways:\n" +
             "1. Tool: call `minis-config` to propose changes (user must approve).\n" +
-            "2. UI: ask the user to go to Settings → Soul to edit directly.\n" +
+            "2. UI: ask the user to go to 设置 → 头像行（人设） to edit directly.\n" +
             "Pick whichever the user finds easier in context. Do not say you cannot change your personality."
 
         // [T-soul-style-injection 2026-05-18, port iOS 0409e24f] The `style`
@@ -521,7 +523,7 @@ object SystemPromptBuilder {
         val body = file?.body
         val trimmed = body?.trim().orEmpty()
         if (trimmed.isEmpty()) {
-            return identityTrimmed + styleBlock(style) + "\n\n" + soulEditHint + "\n\n"
+            return identityTrimmed + styleBlock(style) + clawdyStyle + "\n\n" + soulEditHint + "\n\n"
         }
 
         // Reject (NOT truncate) bodies that exceed the language-aware
@@ -535,7 +537,7 @@ object SystemPromptBuilder {
         val check = SoulStore.isOverLimit(trimmed)
         if (check.isOverLimit) {
             AppLogger.warning(TAG, "personality body is over the language-aware limit ($check) — falling back to identity-only system prompt.")
-            return identityTrimmed + styleBlock(style) + "\n\n" + soulEditHint + "\n\n"
+            return identityTrimmed + styleBlock(style) + clawdyStyle + "\n\n" + soulEditHint + "\n\n"
         }
 
         val personality = scrubInjections(trimmed)
@@ -545,7 +547,7 @@ object SystemPromptBuilder {
         return identityTrimmed +
             "\n\nPersonality (from SOUL.md — your character and voice; defer to the user's latest message when it conflicts with anything here):\n" +
             personality +
-            styleBlock(style) +
+            styleBlock(style) + clawdyStyle +
             "\n\n" +
             soulEditHint +
             "\n\n"

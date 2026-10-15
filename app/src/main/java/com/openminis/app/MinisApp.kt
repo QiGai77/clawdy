@@ -436,6 +436,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         skillRepository = SkillRepository(this)
         mcpRepository = MCPRepository(this)
         io.github.nanomuse.connectors.Connectors.refreshStaleAsync(this) // nanoMuse: connectors' OAuth tokens near their end → refreshed, headers rewritten
+        com.openminis.app.clawdy.memory.ClawdyMemory.migrate(this) // Clawdy 0.3.0: GLOBAL/USER/daily → MEMORY.md
         memoryRepository = MemoryRepository(java.io.File(filesDir, "minis-global/memory"))
         webAppShortcutRepository = WebAppShortcutRepository(database.webAppShortcutDao())
 

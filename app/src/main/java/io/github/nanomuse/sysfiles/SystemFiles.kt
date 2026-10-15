@@ -21,7 +21,7 @@ enum class SystemFiles(
 ) {
     SOUL("SOUL.md", R.string.nm_sysfile_about_soul, editable = true),
     USER("USER.md", R.string.nm_sysfile_about_user, editable = true),
-    MEMORY("GLOBAL.md", R.string.nm_sysfile_about_memory, editable = true),
+    MEMORY("MEMORY.md", R.string.nm_sysfile_about_memory, editable = true), // Clawdy 0.3.0
     FEED("feed-preferences.md", R.string.nm_sysfile_about_feed, editable = true),
     HEARTBEAT("HEARTBEAT.md", R.string.nm_sysfile_about_heartbeat, editable = false);
 

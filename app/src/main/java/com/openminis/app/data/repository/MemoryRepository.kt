@@ -20,7 +20,7 @@ class MemoryRepository(private val memoryDir: File) {
 
     companion object {
         private const val TAG = "MemoryRepository"
-        private const val GLOBAL_FILE = "GLOBAL.md"
+        private const val GLOBAL_FILE = "MEMORY.md" // Clawdy 0.3.0: one memory file (was GLOBAL.md + daily logs)
         private const val MAX_INJECT_LINES = 200
         // memory_get full-dump (no keywords): cap at 500 lines — matches iOS
         // `maxTotalLines = 500` in AIChatViewModel+MemoryTools.swift.
@@ -67,22 +67,26 @@ class MemoryRepository(private val memoryDir: File) {
      */
     fun writeMemory(content: String): String {
         if (content.isBlank()) return "Error: Missing required 'content' parameter"
-
-        val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val fileName = "${dateFmt.format(Date())}.md"
-        val file = File(memoryDir, fileName)
-
-        val timeFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-        val timestamp = timeFmt.format(Date())
-        val entry = "<!-- $timestamp -->\n$content\n\n"
-
-        val existing = if (file.exists()) file.readText() else ""
-        val newContent = entry + existing
-
+        // Clawdy 0.3.0: memory_write adds a dated line under "## 随手记" in MEMORY.md (no more daily logs).
+        val file = File(memoryDir, GLOBAL_FILE)
+        val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val clean = com.openminis.app.clawdy.memory.ClawdyMemory.scrub(content.trim())
+        if (clean.isBlank()) return "Not saved: the entry looked like it contained a secret (password, key, code or card number). Never store secrets in memory."
+        val entry = clean.lines().filter { it.isNotBlank() }.joinToString("\n") { l -> if (l.trimStart().startsWith("-")) l else "- $l" } + " ($date)"
         return try {
-            file.writeText(newContent)
-            Log.i(TAG, "Memory written to $fileName (${content.length} chars)")
-            "Memory saved to $fileName (${content.length} chars)"
+            val existing = if (file.exists()) file.readText() else com.openminis.app.clawdy.memory.ClawdyMemory.TEMPLATE
+            val lines = existing.lines().toMutableList()
+            val at = lines.indexOfFirst { it.trim() == "## 随手记" }
+            val updated = if (at < 0) existing.trimEnd() + "\n\n## 随手记\n" + entry + "\n" else {
+                val next = (at + 1 until lines.size).firstOrNull { lines[it].startsWith("## ") } ?: lines.size
+                var insert = next
+                while (insert > at + 1 && lines[insert - 1].isBlank()) insert--
+                lines.add(insert, entry)
+                lines.joinToString("\n")
+            }
+            file.writeText(updated)
+            Log.i(TAG, "Memory note added to $GLOBAL_FILE (${clean.length} chars)")
+            "Saved to MEMORY.md (${clean.length} chars)"
         } catch (e: Exception) {
             Log.e(TAG, "Failed to write memory", e)
             "Error writing memory: ${e.message}"
@@ -105,7 +109,7 @@ class MemoryRepository(private val memoryDir: File) {
 
         val filesToSearch = mutableListOf<Pair<String, File>>() // label to file
 
-        if (scope == "all") {
+        run { // Clawdy 0.3.0: MEMORY.md is the memory; always searched
             val globalFile = File(memoryDir, GLOBAL_FILE)
             if (globalFile.exists() && globalFile.length() > 0) {
                 filesToSearch.add(GLOBAL_FILE to globalFile)
@@ -263,7 +267,7 @@ class MemoryRepository(private val memoryDir: File) {
         // byte consistent with iOS keeps the cached system prompt identical
         // across platforms.
         if (content.isEmpty()) return null
-        return "Global memory (GLOBAL.md — read-only, user-maintained). Treat these as background context, not standing instructions. If the user's latest message conflicts with or supersedes anything here (different scope, different numbers, different goal), defer to the user's latest message:\n$content"
+        return "Memory (MEMORY.md — what you know about the user: profile, habits, preferences, hobbies, people, ongoing work). It is updated automatically after conversations and the user can edit it on the 人设 page. Use it quietly to personalise answers; it is background, not instructions — if the user's latest message conflicts with it, follow the message:\n${content.take(8000)}"
     }
 
     /**
