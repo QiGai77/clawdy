@@ -67,7 +67,7 @@
 9. 旧页面和深链接还在用 Material 图标或旧的 ChatScreen，要逐步迁移。
 
 ## 6. 授权注意
-- `brand/` 和 `app/src/main/res/drawable-nodpi/nm_avatar_*.webp` 里的二次元角色来自小红书画师，**只限个人使用**。仓库公开或发布前，必须取得画师授权或更换素材。
+- `brand/` 和 `app/src/main/res/drawable-nodpi/nm_avatar_*.webp` 里的二次元角色来自小红书画师。用户于 2026-10-15 向画师确认过，可以公开使用（public）；转载时请注明画师。
 - `design/s*.png` 是 AI 生成的概念图，只用作参考。
 - 字体使用 OFL 许可，许可文本在 `app/src/main/assets/licenses/`。
 
