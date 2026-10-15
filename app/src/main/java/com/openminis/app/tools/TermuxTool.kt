@@ -55,7 +55,7 @@ object TermuxTool {
     fun definition(): AgentToolDefinition = AgentToolDefinition(
         name = NAME,
         description = "Run a bash command in the user's Termux environment on this phone (full Termux userland: pkg, python, node, git, pandoc, chromium, etc.). " +
-            "Use it for heavy work the built-in Alpine sandbox can't do well: editing/creating DOCX (python-docx), PPTX (python-pptx), PDF, rendering web pages, " +
+            "Use it for all shell work: editing/creating DOCX (python-docx), PPTX (python-pptx), PDF, rendering web pages, " +
             "headless browser / Playwright tests (playwright-core with Termux chromium: executablePath '/data/data/com.termux/files/usr/bin/chromium-browser'), builds and git. " +
             "Commands run with `bash -l -c` inside ~/clawdy/<workspace> (created if missing) in the background; stdout, stderr and the exit code are returned (output truncated to 30k chars). " +
             "Termux files live under /data/data/com.termux/files/home — NOT the Alpine sandbox paths; to hand a result to the user, copy it to ~/storage/shared/Clawdy/ (needs termux-setup-storage once). " +

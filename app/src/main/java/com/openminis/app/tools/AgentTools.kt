@@ -28,8 +28,10 @@ object AgentTools {
         // AIChatViewModel.makeAgentTools(memoryEnabled:).
         memoryEnabled: Boolean = true,
     ): List<AgentToolDefinition> = buildList {
-        add(shellExecuteDefinition())
-        add(TermuxTool.definition()) // Clawdy
+        // Clawdy: the PRoot sandbox is out of the agent; Termux is the Linux, Hands is a direct tool.
+        if (com.openminis.app.clawdy.ClawdyFlags.SANDBOX_IN_AGENT) add(shellExecuteDefinition())
+        add(TermuxTool.definition())
+        add(com.openminis.app.clawdy.HandsTool.definition())
         add(FileReadTool.definition())
         add(FileWriteTool.definition())
         add(FileEditTool.definition())
