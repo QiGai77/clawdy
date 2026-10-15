@@ -65,8 +65,8 @@ android {
         applicationId = "io.github.qigai.clawdy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 49
-        versionName = "0.2.0-clawdy"
+        versionCode = 50
+        versionName = "0.3.0-clawdy"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

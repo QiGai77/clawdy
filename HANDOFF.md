@@ -24,11 +24,13 @@
 | 路径 | 内容 |
 |---|---|
 | `app/` | Android 工程（nanoMuse fork） |
-| `app/src/main/java/com/openminis/app/ui/clawdy/` | 新前端壳：`ClawdyShell`、`ClawdyScreens`、`ClawdySheets`、`ClawdyTaskCard`、`ClawdyTurns`、`ClawdyComponents`、`ClawdyIcons`；设置：`ClawdySettings`（首页、模型配置、密钥、分组）、`ClawdySecurityScreens`（安全、密码箱、代填确认、敏感应用）、`ClawdyMoreSettings`（对话、记忆、技能、环境变量、网络、后台、Hands、定时任务） |
+| `app/src/main/java/com/openminis/app/ui/clawdy/` | 新前端壳：`ClawdyShell`、`ClawdyScreens`、`ClawdySheets`、`ClawdyTaskCard`、`ClawdyTurns`、`ClawdyComponents`、`ClawdyIcons`；设置：`ClawdySettings`（首页、模型配置、密钥、分组、`Segmented`/`SegmentedRow`/`Hint`/`Note`）、`ClawdySecurityScreens`（安全、密码箱、代填确认、敏感应用）、`ClawdyMoreSettings`（对话、记忆文件、技能、环境变量、网络、后台、Hands、定时任务）、`ClawdyPersonaScreens`（人设、外观、高级设置）、`ClawdyConnectors`（连接器列表与编辑） |
 | `app/src/main/java/com/openminis/app/clawdy/` | `ClawdyFlags`（`SANDBOX_IN_AGENT=false`）、`ClawdyPresets`（模型目录）、`ToolStatus`、`HandsTool`（`phone_hands`）、`ClawdySecurity`（安全设置的读取与接线）、`vault/`（`Vault` 加密存储、`VaultTools` = `vault_list`/`vault_fill` + 审批队列） |
 | `app/src/main/java/com/openminis/app/tools/TermuxTool.kt` | `termux_run`，经过 `RiskGate.checkShell` 审批 |
 | `app/src/main/java/com/openminis/app/ui/theme/ClawdyTokens.kt` | 设计令牌 |
-| `scripts/termux-bootstrap.sh` | 在手机的 Termux 里运行一次，开启 `allow-external-apps` |
+| `app/src/main/java/com/openminis/app/ui/theme/ClawdyLook.kt` | 外观设置（字体、字号、强调色、引用/代码块、密度、说明文字），`LocalClawdyLook` |
+| `app/src/main/java/com/openminis/app/clawdy/{memory,mcp}/`、`ClawdyPersona.kt`、`TermuxDiag.kt` | 记忆、MCP 连接器、人设/对话方式、Termux 诊断 |
+| `scripts/clawdy-setup.sh` | Termux 一键安装 + 体检（`--diagnose` 只体检，`--minimal` 不装 chromium/playwright）；App 里复制的就是 `curl -fsSL https://raw.githubusercontent.com/QiGai77/clawdy/main/scripts/clawdy-setup.sh \| bash`。`termux-bootstrap.sh` 只是转调它的壳 |
 | `design/` | 15 张界面概念图和逐页交互说明 |
 | `brand/` | 图标和头像的源文件（授权见第 6 节） |
 | `docs/Clawdy-README.pdf` | README 的 PDF 版 |
@@ -47,7 +49,7 @@
 - 如果在 aarch64 Linux 上构建，aapt2 需要通过 qemu-x86_64 运行。参考 `tools/env.sh`（其中的代理配置是 Hark 沙箱专用，用不上就删掉）。完整构建约 10 分钟。
 - 已知问题：原始工作区里 `jniLibs/arm64-v8a/libc++_shared.so` 曾显示为被删除，本仓库保留了它。如果出现重复库冲突，可以删掉它，因为依赖库也会提供同一个文件。
 
-已构建的调试版 APK：`release/Clawdy-0.2.0-debug.apk`（v0.2.0，设置重做 + 密码箱 + 安全接线）；旧的 `release/Clawdy-0.1.0-debug.apk` 用户已在真机上装过，能运行。GitHub Releases 对应 `v0.2.0-debug` / `v0.1.0-debug`。
+已构建的调试版 APK：`release/Clawdy-0.3.0-debug.apk`（v0.3.0，可直接覆盖安装 0.2.0）；`release/Clawdy-0.2.0-debug.apk`（v0.2.0，设置重做 + 密码箱 + 安全接线）；旧的 `release/Clawdy-0.1.0-debug.apk` 用户已在真机上装过，能运行。GitHub Releases 对应 `v0.3.0-debug` / `v0.2.0-debug` / `v0.1.0-debug`。
 
 构建主机从零搭建：`bash tools/setup-host-aarch64.sh`（JDK 17、cmdline-tools、platform 36、build-tools 35.0.0、qemu；Hark 沙箱里会把网关 CA 导入 JDK、用 `tools/fwdproxy.py` 做本地代理），然后 `setsid bash tools/build.sh &`，看 `/workspace/tools/build.log`。只编 Kotlin 可以跑 `./gradlew :app:compileDebugKotlin`。
 
@@ -75,19 +77,37 @@
 - 调试签名固定：`app/clawdy-debug.keystore`（Android 默认 debug 口令）写进了 `signingConfigs.debug`。v0.1.0 用的是旧沙箱里丢失的临时 key，所以 **从 0.1.0 升到 0.2.0 必须先卸载**；之后的调试版都能覆盖安装。
 - 构建脚本修好：`tools/setup-host-aarch64.sh` 会下载 cmdline-tools、导入网关 CA；新增 `tools/fwdproxy.py`、`tools/aapt2`。
 
+### v0.3.0（2026-10-15，按用户 0.2.0 真机测试反馈）
+- **Hands 输入修好**（`io/github/nanomuse/hands/HandsTyping.kt`）：0.2.0 在微信搜索框里每次 `type into 搜索框` 都失败。原因是 0.2.0 只在各窗口根节点上 `findFocus(FOCUS_INPUT)` 并直接 `ACTION_SET_TEXT`：微信的输入焦点经常落在包着 EditText 的容器上（不可编辑，SET_TEXT 被拒），有些 ROM 上按窗口找焦点直接返回空。现在：先用服务级 `findFocus`，再在焦点节点的子孙/祖先里找可编辑的，再找上一次点击位置下的输入框、唯一的输入框；写入依次尝试 `ACTION_SET_TEXT` → 剪贴板 + `ACTION_PASTE` → 剪贴板 + Shizuku `input keyevent 279`（`input text` 打不了中文），每一步都重新读节点文字确认；失败时把每种方法的失败原因交给屏幕模型。
+- **身份**：系统提示词里上游残留的 “nanoMuse” 全部替换成 Clawdy，并加了一句身份声明（`ClawdyPersona.IDENTITY_FENCE`），不再说“nanoMuse 里的 AI 助手”。
+- **人设页**（设置首页头像行，`ClawdyPersonaScreens.kt` `PersonaScreen`）：名字 + 性格（SOUL.md）、对话方式（默认/简洁/温柔陪伴/专业严谨/活泼/自定义，注入系统提示词）、记忆（MEMORY.md 查看编辑、使用记忆、自动记忆、清空）。设置和抽屉里的「记忆」入口都改到这里。
+- **记忆重做**（`clawdy/memory/ClawdyMemory.kt`）：只有一个 `MEMORY.md`（`minis-global/memory/`），启动时把 GLOBAL.md、USER.md、每日记录合并进去，原文件移到 `_archive-0.2/`。每轮回答结束 6 秒后（防抖）用当前对话的模型把新信息合并进 MEMORY.md（基本信息/习惯与偏好/爱好/人际关系/正在做的事/随手记）。`memory_write` 现在写进 MEMORY.md 的「随手记」。密钥类内容三道防线：提示词禁止、对话里代填过的密码箱值先遮盖、写入前逐行过滤（Key、Token、长数字、“密码：xx”）。
+- **外观**（`ui/theme/ClawdyLook.kt` + 外观页）：主题、字体（衬线/无衬线/跟随系统）、字号（小/标准/大/特大，作用于全部 Typography 和 Clawdy 组件）、强调色（7 个预设，自动派生任务卡/气泡浅色）、引用块（竖条+浅底/只有竖条/描边卡片）、代码块（深色/浅色）、对话密度（行距 + 消息间距）、显示说明文字（默认关）。
+- **说明文字默认隐藏**：`ClawdyRow` 新增 `hint`（说明，只在「显示说明文字」开时出现）与 `subtitle`（数据，始终显示）分开；`Hint()` 跟随开关，`Note()` 用于空状态/结果等必须显示的文字。
+- **布局**：`Segmented` 改为占满整行、等分，新增 `SegmentedRow`（标题在上、选项在下）；密码箱「离开后多久上锁」、分组「使用方式 / 何时换下一个」、外观各项都改用它。`ClawdyRow` 的 trailing 最多 180dp，文字列不会再被挤成一字一行。步骤详情的输出改为自动换行（0.2.0 横向滚动、左侧被截）。Termux 卡片描述不再截断。
+- **高级设置**（`AdvancedScreen`）：自动压缩、上下文与记忆细节、模型分组与故障切换、Hands 屏幕模型、环境变量、网络代理、运行日志、系统文件、上游设置页。设置首页只剩：人设 · 模型 · 安全 · 能力（技能/连接器/工具连接/定时任务）· 外观 · 系统（通知与后台/备份与恢复/高级设置）· 关于。
+- **Termux 诊断**（`clawdy/TermuxDiag.kt`）：区分「Google Play 版（没有 RUN_COMMAND）」「权限未定义（旧版）」「Termux 比 Clawdy 后装（需覆盖安装一次 Clawdy；仍不行再卸载重装）」「未授权（弹窗或 应用详情 → 其他权限）」，显示版本和来源（F-Droid/GitHub/Play，按签名和安装来源判断）；「测试连接」真正发一次 RUN_COMMAND `echo ok`，超时会提示 allow-external-apps 或电池优化。卡片里只保留一行可复制的一键脚本命令。
+- **连接器 = MCP**（`clawdy/mcp/`，设置 → 能力 → 连接器）：原生 Kotlin MCP 客户端（Streamable HTTP，自动回退旧版 HTTP+SSE；`Mcp-Session-Id`；分页 tools/list），不再依赖沙箱里的 `minis-mcp-cli`。远程服务 App 直连；OAuth 走 RFC 9728/8414 发现 + RFC 7591 动态注册 + 上游 PKCE（回调 127.0.0.1:54546）+ 自动刷新。stdio 服务在 Termux 里用 `npx -y supergateway --stdio … --outputTransport streamableHttp --port <由名字算出的端口> --host 127.0.0.1` 启动，日志 `~/clawdy/mcp/<名字>.log`，然后按 HTTP 连接。Agent 工具：`mcp_tools`、`mcp_call`（发送/删除/付款类工具名先弹审批卡）。密钥类字段存进加密环境变量，配置里写 `$$变量名`。13 个预设（全部未在真机测试）：高德、百度地图、GitHub（PAT）、飞书（官方 lark-mcp）、12306、哔哩哔哩、中国天气、网易云音乐、小红书（需电脑跑 xiaohongshu-mcp，局域网连接）、Google 全家桶（workspace-mcp）、Canva（OAuth）、Canvas LMS、Figma（官方只允许白名单客户端，标为目前不可用）。
+
 ## 5. 待办（建议按这个顺序做）
-1. **真机测试 v0.2.0**（先卸载 0.1.0，签名不同）：设置各页能打开不崩；工作模式三档实际效果；密码箱增删改 + 锁屏验证；`vault_fill` 在一个真实登录页上（看用户名框定位是否准）；Hands 文字模式完整跑一个任务；敏感应用拦截。
-2. 备份与恢复还是上游界面（`Routes.BACKUP`，设置 → 系统 → 备份与恢复）。远程备份依赖已 stub 的 rclone，只有本地导出/导入能用。要原生重做时复用 `BackupViewModel`。
-3. MCP：上游的 MCP 调用靠沙箱里的 `minis-mcp-cli`，沙箱移除后不可用，所以没有放进新设置。需要先决定 MCP 在 Termux 里怎么跑（stdio 服务器用 Termux 起、HTTP 服务器 App 直连）。
-4. 还没移植的上游设置：思考规则（`ThinkingRulesSection`，按服务商）、语音输入/输出分组、用量统计（`UsageStatsScreen`）、系统文件（SOUL/USER/HEARTBEAT 编辑，人设页已覆盖 SOUL）、外观里除主题以外的选项、Shizuku 详细页、关于页的更新检查。定时任务的编辑页仍是上游界面。
-5. 已决定不移植（属于被移除的沙箱或 nanoMuse 云）：存储 / rootfs、共享文件夹、挂载外部文件夹、终端、nanoMuse 云账号与数据管理、电脑/编程（reach hub）、连接器、头像工作室、上游反馈渠道。
-6. Hands 悬浮层加暂停/继续（现有的 operator 不支持暂停，需要改 `HandsOffloadHandler`）。
-7. 附件面板：「当前屏幕」截图、最近照片条；把联网搜索和 Hands 开关接入 Agent。
-8. 审批单：支持编辑待执行的动作（现在点「编辑」会取消动作，并把内容放回输入框）。
-9. 工作区页：长按菜单、「+」按钮。
-10. 移除沙箱残留：APK 里还带着 `assets/alpine-minirootfs.tar`（8 MB）和 `proot`，启动时仍会安装 rootfs 并启动 offload server。拆的时候要先把 Hands 和 offload 对它的依赖解开，**改完必须测**。
-11. 点赞/点踩要持久化；任务卡的展开状态要按消息保存。
-12. 旧页面和深链接还在用 Material 图标或旧的 ChatScreen，要逐步迁移（上游 `Routes.SETTINGS` 仍注册着，只是新设置里不再有入口）。
+1. **真机测试 v0.3.0**（可直接覆盖安装 0.2.0）：
+   - Hands：微信搜索框输入中文（看工具输出里写的是哪种方法成功：SET_TEXT / paste / Shizuku paste）；再试 QQ、淘宝搜索框。
+   - Termux：工具连接页的诊断结论是否和实际一致；按提示覆盖安装后「授权」能否弹窗；「测试连接」；在 Termux 里跑一键脚本，看体检表。
+   - 人设：改名字/性格/对话方式后新对话是否生效；聊几轮后 MEMORY.md 是否自动出现关于用户的条目（约 6 秒后台更新）；旧的 GLOBAL.md/每日记录是否已合并。
+   - 外观：字体/字号/强调色/引用块/代码块/密度/说明文字开关是否全局生效（含上游页面的 Typography）。
+   - 连接器：先试不需要 Key 的 12306（本地，第一次 npx 下载较慢）和高德（远程，需 Key）；再试 GitHub PAT、飞书。
+2. MCP：supergateway 的 `--host` 参数在较老版本里可能不存在（新版有）；如果启动日志报未知参数，去掉 `--host`（会监听所有网卡，需要提醒用户）。stdio 服务器的会话级开关（`setSessionOverride`）还没有 UI。
+3. 记忆：自动记忆目前每轮都会调用一次模型（只发新增的对话片段）；如果费用敏感，可以改成「对话结束 / 切换对话时」再更新。
+4. 备份与恢复还是上游界面（`Routes.BACKUP`）。远程备份依赖已 stub 的 rclone，只有本地导出/导入能用。要原生重做时复用 `BackupViewModel`。
+5. 还没移植的上游设置：思考规则（`ThinkingRulesSection`，按服务商）、语音输入/输出分组、用量统计（`UsageStatsScreen`）、Shizuku 详细页、关于页的更新检查。定时任务的编辑页仍是上游界面。高级设置里有「上游设置页」入口仅供排查。
+6. 已决定不移植（属于被移除的沙箱或 nanoMuse 云）：存储 / rootfs、共享文件夹、挂载外部文件夹、终端、nanoMuse 云账号与数据管理、电脑/编程（reach hub）、头像工作室、上游反馈渠道。（「连接器」已由 0.3.0 的 MCP 页替代。）
+7. Hands 悬浮层加暂停/继续（现有的 operator 不支持暂停，需要改 `HandsOffloadHandler`）。
+8. 附件面板：「当前屏幕」截图、最近照片条；把联网搜索和 Hands 开关接入 Agent。
+9. 审批单：支持编辑待执行的动作（现在点「编辑」会取消动作，并把内容放回输入框）。
+10. 工作区页：长按菜单、「+」按钮。
+11. 移除沙箱残留：APK 里还带着 `assets/alpine-minirootfs.tar`（8 MB）和 `proot`，启动时仍会安装 rootfs 并启动 offload server。拆的时候要先把 Hands 和 offload 对它的依赖解开，**改完必须测**。
+12. 点赞/点踩要持久化；任务卡的展开状态要按消息保存。
+13. 旧页面和深链接还在用 Material 图标或旧的 ChatScreen，要逐步迁移（上游 `Routes.SETTINGS` 仍注册着）。
 
 ## 6. 授权注意
 - `brand/` 和 `app/src/main/res/drawable-nodpi/nm_avatar_*.webp` 里的二次元角色来自小红书画师。用户于 2026-10-15 向画师确认过，可以公开使用（public）；转载时请注明画师。

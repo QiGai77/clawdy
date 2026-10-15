@@ -45,3 +45,32 @@ See the report returned to the dispatching agent (also summarised in the final c
 - `termux_run`: clipboard-read approval; env vars exported; output redacted by `EnvVarRedactor`.
 - Approval sheet: real data preview (`dataPreview`), mode-aware remember checkbox, class-aware button label.
 - Vault: `clawdy/vault/Vault.kt`, `VaultTools.kt`; sheet `VaultFillSheet` mounted once in `AppNavigation`.
+
+## 2026-10-15 (v0.3.0) — device feedback on 0.2.0
+
+### Fixes
+- Hands typing (`hands/HandsTyping.kt`): service-level input focus → editable child/ancestor of a wrapper →
+  editable under the last tap / only editable; SET_TEXT → clipboard+PASTE → clipboard+Shizuku keyevent 279,
+  each verified by re-reading. Root cause of 「输入文本失败」 in WeChat: input focus sat on a non-editable
+  container (or per-window findFocus returned null) and SET_TEXT was the only method.
+- Identity: `ClawdyPersona.finalizePrompt` renames upstream "nanoMuse/OpenMinis" mentions in the assembled
+  system prompt; `IDENTITY_FENCE` added to SoulStore's identity section. Hands default agentName "Clawdy".
+- Layout: `Segmented` fills its line; `SegmentedRow` puts it under the title (vault lock, group strategy,
+  appearance). `ClawdyRow(hint=…)` + `below=…`, trailing capped at 180dp. Step detail output wraps.
+
+### New
+- 外观 (`ClawdyLook` / `LocalClawdyLook`): font (serif/sans/system), scale 0.9–1.25 on the whole Typography and
+  `serif()`, 7 accent presets (`ClawdyLookStore.palette` derives task card / bubble tints), quote style ×3,
+  code block dark/light, density (line height × turn spacing), 显示说明文字 (default off; `Hint`/`hint` follow it).
+- Settings top level: 人设 avatar row · 模型 · 安全 · 能力 (技能, 连接器, 工具连接, 定时任务) · 外观 ·
+  系统 (通知与后台, 备份与恢复, 高级设置) · 关于. `AdvancedScreen` holds the expert items.
+- 人设 (`PersonaScreen`): SOUL name + body, 对话方式 (5 presets + custom → `ClawdyPersona.stylePrompt`), MEMORY.md
+  editor, 使用记忆 / 自动记忆 switches, 清空. Drawer 记忆 → 人设与记忆.
+- Memory (`clawdy/memory/ClawdyMemory.kt`): single MEMORY.md, one-time migration, debounced post-turn update from
+  `nmAfterTurn()` with the session's provider, `scrub()` secret filter; `MemoryRepository` global file = MEMORY.md.
+- Termux (`clawdy/TermuxDiag.kt`): verdicts NOT_INSTALLED / PLAY_BUILD / NOT_DEFINED / INSTALLED_AFTER /
+  NOT_GRANTED / READY, live `echo ok` test, one-liner `scripts/clawdy-setup.sh` (also in assets).
+- Connectors (`clawdy/mcp/`): `McpClient` (Streamable HTTP + legacy SSE), `McpOAuth` (RFC 9728/8414/7591 +
+  upstream PKCE + refresh), `McpManager` (stdio via Termux + supergateway on 127.0.0.1:38200–38899, tools
+  `mcp_tools` / `mcp_call` with RiskGate on send/delete/pay-looking tools), `McpPresets` (13 presets),
+  UI `ClawdyConnectors.kt`.

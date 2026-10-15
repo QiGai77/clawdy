@@ -134,7 +134,7 @@ cd src/clawdy && git init && git add -A && git commit -m "baseline from nanoMuse
 | `clawdy/ClawdyFlags.kt` | 功能开关，例如 `SANDBOX_IN_AGENT=false` |
 | `ui/clawdy/`（Shell、TaskCard、Turns、Sheets、Screens、Components、Icons） | 15 屏前端壳、任务卡、SVG 图标、组件 |
 | `res/font/`、`assets/licenses/` | 思源宋体子集、Source Serif 4 及其 OFL 许可 |
-| `scripts/termux-bootstrap.sh` | Termux 一次性初始化脚本 |
+| `scripts/clawdy-setup.sh` | Termux 一键安装与体检脚本（`--diagnose` / `--minimal`） |
 
 **停用或移除**
 
@@ -221,7 +221,9 @@ cd src/clawdy && git init && git add -A && git commit -m "baseline from nanoMuse
 - 支持超时、停止和重试；长任务用前台通知显示运行状态。
 
 ### 5.2 一次性初始化
-- App 自带脚本 `scripts/termux-bootstrap.sh`（也打包在 APK assets 里），一次装好：
+- 在 Termux 里运行一行命令（App 的「工具连接」页可以直接复制）：
+  `curl -fsSL https://raw.githubusercontent.com/QiGai77/clawdy/main/scripts/clawdy-setup.sh | bash`
+  脚本可重复运行，最后打印体检表；`-s -- --diagnose` 只体检，`-s -- --minimal` 不装 Chromium。它会装好：
   - Python 3、Node.js、Git、Pandoc
   - python-docx、python-pptx、openpyxl、PDF 工具
   - Chromium、playwright-core
@@ -413,7 +415,7 @@ App 在后台时，用高优先级通知和悬浮窗提醒你确认。
 │   │   ├── ui/chat/ChatViewModel.kt   工具分发与对话状态
 │   │   └── ui/theme/                  Clawdy 设计令牌与主题
 │   ├── app/src/main/res/              图标、头像、字体
-│   └── scripts/termux-bootstrap.sh    Termux 初始化脚本
+│   └── scripts/clawdy-setup.sh        Termux 一键安装与体检脚本
 ├── brand/               图标与头像源文件
 ├── design/              概念图 s01–s15、交互说明、前端壳进度
 └── docs/README.md       本文档
