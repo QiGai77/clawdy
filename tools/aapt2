@@ -1,0 +1,2 @@
+#!/bin/sh
+exec qemu-x86_64 -L /usr/x86_64-linux-gnu /workspace/tools/sdk/build-tools/35.0.0/aapt2 "$@"
