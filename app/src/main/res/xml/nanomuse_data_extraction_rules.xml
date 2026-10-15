@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: Android 12+ backup and device-to-device transfer rules; same list as
+     nanomuse_backup_rules.xml — secrets stay on this phone. Not consulted since 0.1.40
+     (allowBackup="false", docs/sync.md); kept for the day the switch is turned on again. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="nanomuse_secure.xml" />
+        <exclude domain="sharedpref" path="env_var_values.xml" />
+        <exclude domain="sharedpref" path="oauth_prefs.xml" />
+        <exclude domain="sharedpref" path="backup_rclone_secrets.xml" />
+        <exclude domain="sharedpref" path="minis_device_identity.xml" />
+        <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs__.xml" />
+        <!-- the proxy for own providers (Settings → Network); its password in the encrypted file beside it -->
+        <exclude domain="sharedpref" path="nanomuse_proxy.xml" />
+        <exclude domain="sharedpref" path="nanomuse_proxy_secrets.xml" />
+        <exclude domain="file" path="minis-global/nanomuse/grants.json" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="nanomuse_secure.xml" />
+        <exclude domain="sharedpref" path="env_var_values.xml" />
+        <exclude domain="sharedpref" path="oauth_prefs.xml" />
+        <exclude domain="sharedpref" path="backup_rclone_secrets.xml" />
+        <exclude domain="sharedpref" path="minis_device_identity.xml" />
+        <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs__.xml" />
+        <!-- the proxy for own providers (Settings → Network); its password in the encrypted file beside it -->
+        <exclude domain="sharedpref" path="nanomuse_proxy.xml" />
+        <exclude domain="sharedpref" path="nanomuse_proxy_secrets.xml" />
+        <exclude domain="file" path="minis-global/nanomuse/grants.json" />
+    </device-transfer>
+</data-extraction-rules>

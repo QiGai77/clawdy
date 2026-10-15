@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nanoMuse: what a device backup (Android 11 and earlier: full-backup-content) may copy.
+     Since 0.1.40 the manifest says allowBackup="false" — nothing of the app goes to the device
+     backup at all (docs/sync.md) — and this file is not consulted; it is kept for the day the
+     switch is turned on again. Encrypted stores cannot be read on another device anyway (the
+     master key stays in this phone's keystore) and the Reach pairing tokens and API keys must
+     not leave it at all. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="nanomuse_secure.xml" />
+    <exclude domain="sharedpref" path="env_var_values.xml" />
+    <exclude domain="sharedpref" path="oauth_prefs.xml" />
+    <exclude domain="sharedpref" path="backup_rclone_secrets.xml" />
+    <exclude domain="sharedpref" path="minis_device_identity.xml" />
+    <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs__.xml" />
+    <!-- the proxy for own providers (Settings → Network); its password in the encrypted file beside it -->
+    <exclude domain="sharedpref" path="nanomuse_proxy.xml" />
+    <exclude domain="sharedpref" path="nanomuse_proxy_secrets.xml" />
+    <!-- what the user allowed the agent to do once and for all belongs to this phone's screens -->
+    <exclude domain="file" path="minis-global/nanomuse/grants.json" />
+</full-backup-content>
