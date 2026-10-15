@@ -47,7 +47,7 @@
 - 如果在 aarch64 Linux 上构建，aapt2 需要通过 qemu-x86_64 运行。参考 `tools/env.sh`（其中的代理配置是 Hark 沙箱专用，用不上就删掉）。完整构建约 10 分钟。
 - 已知问题：原始工作区里 `jniLibs/arm64-v8a/libc++_shared.so` 曾显示为被删除，本仓库保留了它。如果出现重复库冲突，可以删掉它，因为依赖库也会提供同一个文件。
 
-已构建的调试版 APK 发在 GitHub Releases：`v0.1.0-debug`，对应提交是最后一个 "Gate termux_run…"。**还没在真机上测过**。
+已构建的调试版 APK 放在仓库的 `release/Clawdy-0.1.0-debug.apk`（基于提交 "Gate termux_run…"），GitHub Releases 的 `v0.1.0-debug` 也指向这个文件。**还没在真机上测过**。
 
 ## 4. 已完成
 - 15 屏 Compose 壳：首页、任务卡（折叠/展开/完成/失败）、步骤详情、审批单、侧边栏、模型选择、添加服务商（BYOK、测试连接、拉取 `/models`）、工具页（真实状态检测和无障碍引导）、首次引导、附件、工作区、设置、许可证页。
