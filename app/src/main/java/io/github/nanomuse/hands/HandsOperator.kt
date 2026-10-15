@@ -57,7 +57,7 @@ class HandsOperator(private val context: Context) {
         /** A cap on steps for callers that want one; 0 (the default) means the run goes on until the task is done, the person stops it, or the time limit. */
         val maxSteps: Int = DEFAULT_MAX_STEPS,
         val sessionId: String? = null,
-        val agentName: String = "nanoMuse",
+        val agentName: String = "Clawdy",
         val language: String = "the user's language",
     )
 
@@ -309,6 +309,7 @@ class HandsOperator(private val context: Context) {
                             }
                         }
                         capsule.stage.ripple(px, py)
+                        if (ok) lastTap = px to py
                         lastResult = if (ok) "${action.describe()} at ($px, $py) was performed." else "the gesture at ($px, $py) was rejected by the system; try again or another way."
                         Thread.sleep(TAP_SETTLE_MS)
                     }
@@ -537,18 +538,31 @@ class HandsOperator(private val context: Context) {
     }
 
     private fun focusedField(svc: MinisAccessibilityService): AccessibilityNodeInfo? =
-        svc.rootNodes().firstNotNullOfOrNull { root -> runCatching { root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) }.getOrNull() }
+        runCatching { svc.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) }.getOrNull()
+            ?: svc.rootNodes().firstNotNullOfOrNull { root -> runCatching { root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) }.getOrNull() }
 
-    /** Types into the field with the cursor; [HANDOFF] when that field is a secret. */
+    /** Where the last tap landed, for finding the field when nothing reports input focus. */
+    @Volatile private var lastTap: Pair<Int, Int>? = null
+
+    /**
+     * Types into the field with the cursor; [HANDOFF] when that field is a secret. 0.3.0: the
+     * target and the input method go through [HandsTyping] (focus lookup that survives wrapper
+     * views, then SET_TEXT → clipboard paste → Shizuku KEYCODE_PASTE, each verified by re-reading
+     * the field), so a custom EditText like WeChat's search box takes the text.
+     */
     private fun typeText(svc: MinisAccessibilityService, action: HandsAction.InputText): String {
         // Clawdy 「不在密码框上操作」(default on): the screen model never types into a secret field.
         if (guardPasswordFields && TapWords.looksSecret(action.field)) return HANDOFF
-        val node = focusedField(svc) ?: return "no text field has the cursor; tap the field first, then type in the next turn."
+        val why = StringBuilder()
+        val target = HandsTyping.findTarget(svc, lastTap, why)
+            ?: return "no text field to type into ($why); tap the field first, then type in the next turn."
+        val node = target.node
         if (guardPasswordFields && node.isPassword) return HANDOFF
         val hint = listOfNotNull(node.hintText?.toString(), node.contentDescription?.toString()).joinToString(" ")
         if (guardPasswordFields && hint.isNotBlank() && TapWords.looksSecret(hint)) return HANDOFF
-        val ok = svc.setNodeText(node, action.text)
-        return if (ok) "typed “${action.text.take(60)}” into the field." else "the field did not accept text (ACTION_SET_TEXT failed); tap it and try again."
+        val r = HandsTyping.type(context, svc, node, action.text)
+        return if (r.ok) "typed “${action.text.take(60)}” into the field (${r.detail}; found by ${target.how})."
+        else "typing failed — the field (${node.className}) rejected every method: ${r.detail}. Try tapping the field again, or use take_over and ask the user to type it."
     }
 
     private fun pressEnter(svc: MinisAccessibilityService): String {

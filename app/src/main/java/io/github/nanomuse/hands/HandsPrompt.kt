@@ -26,7 +26,7 @@ object HandsPrompt {
         append("- {\"action_type\":\"double_tap\",\"coordinate\":[x,y],\"target\":\"...\"}\n")
         append("- {\"action_type\":\"swipe\",\"start_coordinate\":[x,y],\"end_coordinate\":[x,y]} — drag a finger from start to end (a carousel, a slider, a list)\n")
         append("- {\"action_type\":\"scroll\",\"direction\":\"down\"} — show what is further down the page (up, left, right likewise); about half a screen\n")
-        append("- {\"action_type\":\"input_text\",\"text\":\"...\",\"field\":\"what the field is\"} — types into the field that has the cursor; tap the field first, in its own turn\n")
+        append("- {\"action_type\":\"input_text\",\"text\":\"...\",\"field\":\"what the field is\"} — types into the field that has the cursor; tap the field first, in its own turn (when the keyboard is already up on that field, type straight away). If typing reports it failed twice, use take_over instead of tapping again\n")
         append("- {\"action_type\":\"keyboard_enter\"} — the Enter / Search key\n")
         append("- {\"action_type\":\"open_app\",\"app_name\":\"...\"} — opens an installed app by its name\n")
         append("- {\"action_type\":\"navigate_back\"} · {\"action_type\":\"navigate_home\"} · {\"action_type\":\"wait\",\"seconds\":2}\n")
