@@ -40,6 +40,14 @@ android {
     // keyPassword; git-ignored) and fall back to the debug key otherwise, so a
     // release APK can be built by anyone. One key for every version.
     signingConfigs {
+        // Clawdy: one shared debug key in the repo, so debug APKs built on any host upgrade in place
+        // (v0.1.0 was signed with a throwaway sandbox key; from v0.2.0 on every debug build uses this one).
+        getByName("debug") {
+            storeFile = rootProject.file("app/clawdy-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         val keystoreProperties = rootProject.file("../../keystore.properties")
         if (keystoreProperties.isFile) {
             val props = Properties()
@@ -57,8 +65,8 @@ android {
         applicationId = "io.github.qigai.clawdy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 48
-        versionName = "0.1.0-clawdy"
+        versionCode = 49
+        versionName = "0.2.0-clawdy"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
